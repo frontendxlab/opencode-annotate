@@ -1,0 +1,35 @@
+{
+  "name": "opencode-visual-inspector",
+  "version": "1.0.0",
+  "description": "Select web UI elements and send precise visual change requests to OpenCode",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@opencode/plugin": "0.0.0-beta-19296"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "opencode": ">=0.0.0-beta-18684"
+  },
+  "files": ["src", "README.md", "LICENSE"],
+  "keywords": ["opencode", "opencode-plugin", "visual-inspector", "frontend"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/frontendxlab/opencode-annotate.git"
+  },
+  "homepage": "https://github.com/frontendxlab/opencode-annotate#readme",
+  "bugs": "https://github.com/frontendxlab/opencode-annotate/issues",
+  "license": "MIT"
+}
