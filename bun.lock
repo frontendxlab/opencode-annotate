@@ -5,6 +5,7 @@
     "": {
       "name": "opencode-visual-inspector",
       "dependencies": {
+        "@opencode-ai/plugin": "0.0.0-v1-202510310553",
         "@opencode/plugin": "0.0.0-beta-19296",
       },
       "devDependencies": {
@@ -119,6 +120,10 @@
     "@npmcli/redact": ["@npmcli/redact@4.0.0", "", {}, "sha512-gOBg5YHMfZy+TfHArfVogwgfBeQnKbbGo3pSUyK/gSI0AVu+pEiDVcKlQb0D8Mg1LNRZILZ6XG8I5dJ4KuAd9Q=="],
 
     "@npmcli/run-script": ["@npmcli/run-script@10.0.4", "", { "dependencies": { "@npmcli/node-gyp": "^5.0.0", "@npmcli/package-json": "^7.0.0", "@npmcli/promise-spawn": "^9.0.0", "node-gyp": "^12.1.0", "proc-log": "^6.0.0" } }, "sha512-mGUWr1uMnf0le2TwfOZY4SFxZGXGfm4Jtay/nwAa2FLNAKXUoUwaGwBMNH36UHPtinWfTSJ3nqFQr0091CxVGg=="],
+
+    "@opencode-ai/plugin": ["@opencode-ai/plugin@0.0.0-v1-202510310553", "", { "dependencies": { "@opencode-ai/sdk": "0.0.0-v1-202510310553", "zod": "4.1.8" } }, "sha512-5q1BIDiGCIYCnR4rm3GnwRt749fAO6ipsZpsczbe+kSrD1PPoG3/xIPmao9SKJHY4seZwb2If96XqSH/KumO/Q=="],
+
+    "@opencode-ai/sdk": ["@opencode-ai/sdk@0.0.0-v1-202510310553", "", {}, "sha512-45ovc/spc5pHVLdg5RJO/N7zbVSxPePT1YPwHyOyuYW0cH4NWo1g5Fh9HUyYPV/gRnTi8SQgJl8y4bOMm50Emg=="],
 
     "@opencode/ai": ["@opencode/ai@0.0.0-beta-19296", "", { "dependencies": { "@aws-sdk/credential-providers": "3.1057.0", "@opencode/schema": "0.0.0-beta-19296", "@smithy/eventstream-codec": "4.2.14", "@smithy/util-utf8": "4.2.2", "aws4fetch": "1.0.20", "effect": "4.0.0-rc.112", "google-auth-library": "10.5.0" } }, "sha512-os3dldWWHXqaem6ksmxEXTx9K9PVkYi0/uD0X8pRSBNZ1rPTANTBoZfVybNjdfWs9ByTKeVDaLzu/66s/yw2Vg=="],
 

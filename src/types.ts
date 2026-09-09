@@ -33,14 +33,31 @@ export type Batch = {
   annotations: Annotation[]
 }
 
+export type LiveState = "submitting" | "working" | "succeeded" | "failed" | "cancelled"
+
+export type LiveRequest = {
+  requestID: string
+  target: string
+  viewports: Viewport[]
+  delivery: Delivery
+  annotations: [Annotation]
+}
+
 export type Browser = {
   bin: string
   args: string[]
   name: string
 }
 
+export type BrowserControl = {
+  ready: Promise<void>
+  resize(width: number, height: number): Promise<Viewport>
+  close(): Promise<void>
+}
+
 export type Handle = {
   port: number
   url: string
   stop(): Promise<void>
+  attach(control: BrowserControl): void
 }

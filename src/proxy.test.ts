@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { createServer, type Server } from "node:http"
 import { proxy } from "./proxy.js"
+import { live } from "./live.js"
 import type { Batch, Handle } from "./types.js"
 
 const servers: Server[] = []
@@ -21,6 +22,17 @@ async function fixture() {
   const address = server.address()
   if (!address || typeof address === "string") throw new Error("Fixture server did not start")
   return `http://127.0.0.1:${address.port}`
+}
+
+async function token(handle: Handle) {
+  const html = await fetch(handle.url).then((res) => res.text())
+  const value = html.match(/const token = "([^"]+)"/)?.[1]
+  if (!value) throw new Error("Inspector token missing")
+  return value
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 const viewport = { label: "Desktop", width: 1440, height: 900 }
@@ -59,6 +71,33 @@ describe("inspector proxy", () => {
     expect(html).not.toContain("__OC_TOKEN__")
   })
 
+  test("keeps target cookies scoped and strips dynamic hop headers", async () => {
+    const seen: Array<string | undefined> = []
+    const headers: Array<string | undefined> = []
+    const server = createServer((req, res) => {
+      seen.push(req.headers.cookie)
+      headers.push(req.headers["x-client"] as string | undefined)
+      res.setHeader("content-type", "text/plain")
+      res.setHeader("connection", "x-internal")
+      res.setHeader("x-internal", "secret")
+      if (req.url === "/login") res.setHeader("set-cookie", "sid=abc; Path=/app; HttpOnly")
+      res.end("ok")
+    })
+    servers.push(server)
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+    const address = server.address()
+    if (!address || typeof address === "string") throw new Error("Fixture server did not start")
+    const handle = await proxy(`http://127.0.0.1:${address.port}`, async () => {})
+    handles.push(handle)
+    const login = await fetch(new URL("/login", handle.url), { headers: { connection: "x-client", "x-client": "secret" } })
+    expect(login.headers.get("x-internal")).toBeNull()
+    expect(login.headers.get("set-cookie")).toBeNull()
+    await fetch(new URL("/app/page", handle.url))
+    await fetch(new URL("/apple", handle.url))
+    expect(seen).toEqual([undefined, "sid=abc", undefined])
+    expect(headers).toEqual([undefined, undefined, undefined])
+  })
+
   test("authenticates and submits a valid batch once", async () => {
     let received: Batch | null = null
     let calls = 0
@@ -88,6 +127,20 @@ describe("inspector proxy", () => {
     expect(invalid.status).toBe(400)
   })
 
+  test("authenticates, bounds, and reports unavailable viewport control", async () => {
+    const handle = await proxy(await fixture(), async () => {})
+    handles.push(handle)
+    const endpoint = new URL("/__opencode_inspect/viewport", handle.url)
+    const denied = await fetch(endpoint, { method: "POST", body: JSON.stringify({ width: 900, height: 700 }) })
+    expect(denied.status).toBe(403)
+    const value = await token(handle)
+    const invalid = await fetch(endpoint, { method: "POST", headers: { "x-opencode-inspector": value }, body: JSON.stringify({ width: 319, height: 700 }) })
+    expect(invalid.status).toBe(400)
+    const unavailable = await fetch(endpoint, { method: "POST", headers: { "x-opencode-inspector": value }, body: JSON.stringify({ width: 900, height: 700 }) })
+    expect(unavailable.status).toBe(503)
+    expect((await unavailable.json()).unavailable).toBe(true)
+  })
+
   test("refuses proxy requests for foreign origins", async () => {
     const target = await fixture()
     const other = await fixture()
@@ -104,5 +157,100 @@ describe("inspector proxy", () => {
       } })
     })
     expect(raw).toBe("400")
+  })
+
+  test("rejects a mismatched Host header and accepts the bound host", async () => {
+    const handle = await proxy(await fixture(), async () => {})
+    handles.push(handle)
+    const port = Number(new URL(handle.url).port)
+    const send = (request: string) => new Promise<string>((resolve, reject) => {
+      Bun.connect({ hostname: "127.0.0.1", port, socket: {
+        data(socket, chunk) { socket.end(); resolve(chunk.toString()) },
+        error(_socket, error) { reject(error) },
+        open(socket) { socket.write(request) },
+      } })
+    })
+    const wrong = await send(`GET / HTTP/1.1\r\nHost: 127.0.0.1:${port + 1}\r\nConnection: close\r\n\r\n`)
+    expect(wrong).toContain("403")
+    expect(wrong).toContain("Invalid inspector host")
+    const rebinding = await send(`GET / HTTP/1.1\r\nHost: evil.example:80\r\nConnection: close\r\n\r\n`)
+    expect(rebinding).toContain("403")
+    const missing = await send("GET / HTTP/1.1\r\nConnection: close\r\n\r\n")
+    expect(missing).toMatch(/400|403/)
+    const bound = await send(`GET / HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nConnection: close\r\n\r\n`)
+    expect(bound).toContain("200")
+    const aliased = await send(`GET / HTTP/1.1\r\nHost: localhost:${port}\r\nConnection: close\r\n\r\n`)
+    expect(aliased).toContain("200")
+  })
+
+  test("rejects token endpoints with a wrong Host before the token check", async () => {
+    const handle = await proxy(await fixture(), async () => {})
+    handles.push(handle)
+    const port = Number(new URL(handle.url).port)
+    const send = (request: string) => new Promise<string>((resolve, reject) => {
+      Bun.connect({ hostname: "127.0.0.1", port, socket: {
+        data(socket, chunk) { socket.end(); resolve(chunk.toString()) },
+        error(_socket, error) { reject(error) },
+        open(socket) { socket.write(request) },
+      } })
+    })
+    const lifecycle = await send(`POST /__opencode_inspect/lifecycle HTTP/1.1\r\nHost: 127.0.0.1:${port + 1}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n`)
+    expect(lifecycle).toContain("403")
+    expect(lifecycle).toContain("Invalid inspector host")
+    const annotations = await send(`POST /__opencode_inspect/annotations HTTP/1.1\r\nHost: evil.example:80\r\nContent-Length: 0\r\nConnection: close\r\n\r\n`)
+    expect(annotations).toContain("403")
+    expect(annotations).toContain("Invalid inspector host")
+  })
+
+  test("authenticates heartbeat and rejects unknown lifecycle actions", async () => {
+    const handle = await proxy(await fixture(), async () => {}, undefined, { orphan: 100 })
+    handles.push(handle)
+    const endpoint = new URL("/__opencode_inspect/lifecycle", handle.url)
+    const denied = await fetch(endpoint, { method: "POST", body: JSON.stringify({ action: "heartbeat" }) })
+    expect(denied.status).toBe(403)
+    const value = await token(handle)
+    const bad = await fetch(endpoint, { method: "POST", headers: { "x-opencode-inspector": value }, body: JSON.stringify({ action: "wat" }) })
+    expect(bad.status).toBe(400)
+    const beat = await fetch(endpoint, { method: "POST", headers: { "x-opencode-inspector": value }, body: JSON.stringify({ action: "heartbeat" }) })
+    expect(beat.status).toBe(200)
+  })
+
+  test("heartbeat extends life, close acknowledges, and stop is repeatable", async () => {
+    const handle = await proxy(await fixture(), async () => {}, undefined, { orphan: 35 })
+    handles.push(handle)
+    const value = await token(handle)
+    const endpoint = new URL("/__opencode_inspect/lifecycle", handle.url)
+    await wait(20)
+    const beat = await fetch(endpoint, { method: "POST", headers: { "x-opencode-inspector": value }, body: JSON.stringify({ action: "activity" }) })
+    expect(beat.status).toBe(200)
+    await wait(20)
+    expect((await fetch(handle.url)).status).toBe(200)
+    const close = await fetch(endpoint, { method: "POST", headers: { "x-opencode-inspector": value }, body: JSON.stringify({ action: "close" }) })
+    expect(close.status).toBe(200)
+    await wait(10)
+    expect((await fetch(handle.url).catch(() => null))?.status).not.toBe(200)
+    await handle.stop()
+    await handle.stop()
+  })
+
+  test("orphan expiry closes the proxy", async () => {
+    const handle = await proxy(await fixture(), async () => {}, undefined, { orphan: 15 })
+    handles.push(handle)
+    await wait(35)
+    expect((await fetch(handle.url).catch(() => null))?.status).not.toBe(200)
+  })
+
+  test("live endpoint remains functional and stop ends its stream", async () => {
+    const service = live(async () => {})
+    const handle = await proxy(await fixture(), async () => {}, service, { orphan: 100 })
+    handles.push(handle)
+    const value = await token(handle)
+    const create = await fetch(new URL("/__opencode_inspect/change", handle.url), { method: "POST", headers: { "content-type": "application/json", "x-opencode-inspector": value }, body: JSON.stringify({ ...payload, requestID: "one" }) })
+    expect(create.status).toBe(202)
+    const stream = await fetch(new URL("/__opencode_inspect/change/one?after=0", handle.url), { headers: { "x-opencode-inspector": value } })
+    expect(stream.status).toBe(200)
+    await handle.stop()
+    expect(await stream.text()).toContain("submitting")
+    expect(service.active).toBe(false)
   })
 })

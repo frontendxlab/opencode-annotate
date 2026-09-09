@@ -57,6 +57,30 @@ describe("generated browser script", () => {
     expect(client).toContain('"x-opencode-inspector":token')
   })
 
+  test("supports safe inspect toggling and keyboard annotation", () => {
+    expect(client).toContain('class="inspect secondary"')
+    expect(client).toContain('aria-pressed')
+    expect(client).toContain("if (!event.isTrusted || !enabled || event.composedPath().includes(host)) return")
+    expect(client).toContain('event.altKey && event.shiftKey && event.key.toLowerCase() === "i"')
+    expect(client).toContain('inspectOn:"Inspect mode on.')
+    expect(client).toContain('inspectOff:"Inspect mode off.')
+  })
+
+  test("supports accessible errors, status, reflow, forced colors, and duplicate-send guard", () => {
+    expect(client).toContain('role="status" aria-live="polite"')
+    expect(client).toContain('aria-describedby="oc-change-error"')
+    expect(client).toContain('setAttribute("aria-invalid", "true")')
+    expect(client).toContain("@media(forced-colors:active)")
+    expect(client).toContain("flex-wrap:wrap")
+    expect(client).toContain("if (pending) return")
+    expect(client).toContain("setTimeout(() => { sync();")
+  })
+
+  test("generated script parses as executable JavaScript", () => {
+    const text = client.replace("__OC_TARGET__", JSON.stringify("http://localhost:3000")).replace("__OC_TOKEN__", JSON.stringify("token-1"))
+    expect(() => new Function(text)).not.toThrow()
+  })
+
   test("ships reduced-motion and related accessibility CSS", () => {
     const { css } = rendered()
     expect(css).toContain("@media(prefers-reduced-motion:reduce)")
@@ -68,6 +92,78 @@ describe("generated browser script", () => {
     expect(client).toContain('dialog.setAttribute("role", "dialog")')
     expect(client).toContain('dialog.setAttribute("aria-modal", "true")')
     expect(client).toContain('role="alert"')
+  })
+
+  test("renders the inline live chat contract", () => {
+    const { html, css } = rendered()
+    for (const value of [
+      'class="chat"', 'role="log"', 'class="add secondary"', 'class="live primary"',
+      'class="composer"', 'aria-describedby="oc-change-error"', 'data-copy="target"',
+    ]) expect(html).toContain(value)
+    expect(css).toContain("max-height:132px")
+    expect(client).toContain('chat.hidden = false')
+    expect(client).toContain('chatInput.addEventListener("input"')
+    expect(client).toContain('chatInput.style.height = "auto"')
+  })
+
+  test("keeps batch and live submissions separate", () => {
+    expect(client).toContain('chatAdd.onclick')
+    expect(client).toContain('chatLive.onclick')
+    expect(client).toContain('annotations:[request]')
+    expect(client).toContain('requestID:id')
+    expect(client).toContain('delivery:route, annotations:[request]')
+    expect(client).toContain('if (live.id || pending) return')
+    expect(client).toContain('chooseLiveDeliveryBody:"Who should apply this live change?"')
+    expect(client).toContain('void liveSend(annotation, delivery)')
+    expect(client).toContain('fetch("/__opencode_inspect/change"')
+    expect(client).toContain('fetch("/__opencode_inspect/change/" + encodeURIComponent(live.id) + "/cancel"')
+  })
+
+  test("covers authenticated split-safe SSE lifecycle and every backend state", () => {
+    for (const value of ["submitting", "working", "succeeded", "failed", "cancelled"]) expect(client).toContain(`"${value}"`)
+    expect(client).toContain('accept":"text/event-stream"')
+    expect(client).toContain('"x-opencode-inspector":token')
+    expect(client).toContain('split("\\n\\n")')
+    expect(client).toContain('decoder.decode(item.value, { stream:true })')
+    expect(client).toContain('id: (\\d+)')
+    expect(client).toContain('data: (.+)')
+    expect(client).toContain('?after=" + live.after')
+    expect(client).toContain('sessionStorage.setItem(storageKey')
+    expect(client).toContain('sessionStorage.removeItem(storageKey)')
+  })
+
+  test("reloads only on success, preserves editable failures and cancellation", () => {
+    expect(client).toContain('if (value === "succeeded") { sessionStorage.setItem(storageKey, JSON.stringify({ state:"applied" })); setTimeout(() => location.reload(), 0); }')
+    expect(client).toContain('if (value === "failed" || value === "cancelled") { chatInput.disabled = false; chatLive.disabled = false; chatAdd.disabled = false; }')
+    expect(client).toContain('if (live.state !== "cancelled") state("failed"')
+    expect(client).toContain('retry.onclick = (event) => { if (event.isTrusted && last) void liveSend(last.request, last.delivery); }')
+    expect(client).toContain('sessionStorage.getItem(storageKey)')
+    expect(client).toContain('saved?.state === "applied"')
+    expect(client).toContain('node.dataset.state = value;\n      node.className = "state "')
+    expect(client).toContain('const node = document.createElement("div");\n      node.className = "state ok"')
+  })
+
+  test("bounds token-scoped status and sends lifecycle at required boundaries", () => {
+    expect(client).toContain('const storageKey = "__oc_inspect_live_" + token')
+    expect(client).toContain('JSON.stringify({ id:live.id, state:value, after:live.after })')
+    expect(client).toContain('void beat("heartbeat")')
+    expect(client).toContain('setInterval(() => { void beat("heartbeat"); }, 5000)')
+    expect(client).toContain('chatInput.addEventListener("input", () => { rows(); beat("activity"); })')
+    expect(client).toContain('await beat("close")')
+    expect(client).not.toContain('pagehide')
+    expect(client).not.toContain('beforeunload')
+  })
+
+  test("preserves inspect toggle, focus order, and accessibility semantics", () => {
+    expect(client).toContain('toggle.setAttribute("aria-pressed", String(enabled))')
+    expect(client).toContain('toggle.onclick = (event) => { if (!event.isTrusted) return; enabled = !enabled')
+    expect(client).toContain('role="alert"')
+    expect(client).toContain('setAttribute("aria-invalid", "true")')
+    expect(client).toContain('if (!dialog.contains(root.activeElement)) { event.preventDefault(); first.focus(); return; }')
+    expect(client).toContain('const first = items[0]')
+    expect(client).toContain('const last = items[items.length - 1]')
+    expect(client).toContain('@media(forced-colors:active)')
+    expect(client).toContain('setTimeout(() => { sync();')
   })
 
   test("uses a CSS spring easing token for motion", () => {
@@ -122,7 +218,8 @@ describe("generated browser script", () => {
   test("successful send presents close-window and continue-annotating choices", () => {
     expect(client).toContain('modal(t("sent"), t("sentBody"))')
     expect(client).toContain('node.querySelector(".cancel").remove()')
-    expect(client).toContain('choice(node, t("closeWindow"), "", () => { window.close(); setTimeout(() => exit.click(), 100); });')
+    expect(client).toContain('choice(node, t("closeWindow"), "", () => { void leave(true); });')
+    expect(client).toContain('document.getElementById("__oc-inspector-script")?.remove()')
     expect(client).toContain('const next = choice(node, t("continue"), "", () => {')
     expect(client).toContain('next.focus({ preventScroll:true });')
     expect(client).toContain('count.textContent = t("sent")')

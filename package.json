@@ -1,16 +1,18 @@
 {
   "name": "opencode-visual-inspector",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Select web UI elements and send precise visual change requests to OpenCode",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./v1": "./src/v1.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {
+    "@opencode-ai/plugin": "0.0.0-v1-202510310553",
     "@opencode/plugin": "0.0.0-beta-19296"
   },
   "devDependencies": {
@@ -20,7 +22,7 @@
   "engines": {
     "opencode": ">=0.0.0-beta-18684"
   },
-  "files": ["src", "README.md", "LICENSE"],
+  "files": ["src", "commands", "README.md", "LICENSE"],
   "keywords": ["opencode", "opencode-plugin", "visual-inspector", "frontend"],
   "publishConfig": {
     "access": "public"
