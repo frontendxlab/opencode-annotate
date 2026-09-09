@@ -23,6 +23,7 @@ async function fixture() {
   return `http://127.0.0.1:${address.port}`
 }
 
+const viewport = { label: "Desktop", width: 1440, height: 900 }
 const annotation = {
   request: "Make this smaller",
   page: "http://localhost:3000",
@@ -37,8 +38,10 @@ const annotation = {
   attributes: {},
   styles: { "border-radius": "12px" },
   rect: { x: 0, y: 0, width: 80, height: 32 },
+  viewport,
   source: null,
 }
+const payload = { target: annotation.page, viewports: [viewport], delivery: "subagent-context", annotations: [annotation] }
 
 describe("inspector proxy", () => {
   test("injects isolated inspector code and strips blocking headers", async () => {
@@ -48,7 +51,8 @@ describe("inspector proxy", () => {
     const html = await res.text()
     expect(res.headers.get("content-security-policy")).toBeNull()
     expect(res.headers.get("x-frame-options")).toBeNull()
-    expect(html).toContain("OpenCode visual inspector")
+    expect(html).toContain('host.id = "__oc-inspector"')
+    expect(html).toContain('setAttribute("aria-label", t("toolbar"))')
     expect(html).toContain("borderRadius: css.borderRadius")
     expect(html).toContain("prefers-reduced-motion:reduce")
     expect(html).not.toContain("__OC_TARGET__")
@@ -64,12 +68,15 @@ describe("inspector proxy", () => {
     const token = html.match(/const token = "([^"]+)"/)?.[1]
     expect(token).toBeTruthy()
     const endpoint = new URL("/__opencode_inspect/annotations", handle.url)
-    const denied = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ target: annotation.page, annotations: [annotation] }) })
+    const denied = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) })
     expect(denied.status).toBe(403)
-    const accepted = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json", "x-opencode-inspector": token! }, body: JSON.stringify({ target: annotation.page, annotations: [annotation] }) })
+    const accepted = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json", "x-opencode-inspector": token! }, body: JSON.stringify(payload) })
     expect(accepted.status).toBe(200)
     expect(calls).toBe(1)
     expect((received as unknown as Batch).annotations[0].selector).toBe("button")
+    expect((received as unknown as Batch).annotations[0].viewport).toEqual(viewport)
+    expect((received as unknown as Batch).viewports).toEqual([viewport])
+    expect((received as unknown as Batch).delivery).toBe("subagent-context")
   })
 
   test("rejects malformed annotation batches", async () => {

@@ -1,6 +1,6 @@
 {
   "name": "opencode-visual-inspector",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Select web UI elements and send precise visual change requests to OpenCode",
   "type": "module",
   "exports": {

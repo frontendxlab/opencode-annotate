@@ -11,11 +11,21 @@ An OpenCode v2 plugin for selecting rendered web elements, attaching visual chan
 
 ## Install
 
-Install from npm after publication:
+Install globally from GitHub:
 
 ```sh
-opencode2 plugin add opencode-visual-inspector
+opencode2 plugin add 'git+https://github.com/frontendxlab/opencode-annotate.git#main'
 ```
+
+OpenCode adds the plugin to your global V2 configuration, so `/inspect` is available in every project. Reopen an existing TUI if it was running during installation.
+
+Verify the installation:
+
+```sh
+opencode2 plugin list
+```
+
+After an npm release, the equivalent registry install is `opencode2 plugin add opencode-visual-inspector`.
 
 For local development, add the package directory to `opencode.jsonc`:
 
@@ -46,12 +56,17 @@ If no live app is detected, the command asks the active OpenCode agent to inspec
 
 In the browser:
 
-1. Hover over the page to outline an element.
-2. Select an element and describe the requested change.
-3. Add more annotations as needed.
-4. Select **Send to OpenCode** once to submit the batch.
+1. Choose a device preset or enter a custom viewport size when responsive behavior matters.
+2. Hover over the page to outline an element.
+3. Select an element and describe the requested change.
+4. Change viewports and add more annotations as needed.
+5. Select **Send to OpenCode** once to submit the batch.
+6. Choose whether the main agent, a subagent with relevant context, or a fresh subagent should implement it.
+7. After sending, close the inspector window or clear the sent batch and continue annotating.
 
-Each annotation includes a unique CSS selector when possible, an XPath fallback, stable attributes, element text, a bounded HTML snippet, relevant computed styles, geometry, optional source hints, and an optional `::before` or `::after` target.
+Each annotation includes its viewport, a unique CSS selector when possible, an XPath fallback, stable attributes, element text, a bounded HTML snippet, relevant computed styles, geometry, optional source hints, and an optional `::before` or `::after` target. One batch can contain annotations from multiple viewport sizes.
+
+OpenCode V2 subagents start with fresh context. The **Subagent with context** option instructs the main agent to package relevant session and project context into the delegation. The **Fresh subagent** option passes only the annotation batch and context discovered from project files.
 
 ## Configuration
 
@@ -98,3 +113,10 @@ bun test
 ```
 
 The package follows the OpenCode v2 `Plugin.define` API and exposes no V1 compatibility layer.
+
+## Update or remove
+
+```sh
+opencode2 plugin update 'git+https://github.com/frontendxlab/opencode-annotate.git#main'
+opencode2 plugin remove 'git+https://github.com/frontendxlab/opencode-annotate.git#main'
+```

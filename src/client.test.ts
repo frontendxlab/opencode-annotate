@@ -81,10 +81,59 @@ describe("generated browser script", () => {
     expect(client).toContain("/(token|secret|password|authorization|cookie|value)/i")
   })
 
-  test("annotation payload carries selector, xpath, pseudo, rect, and source fields", () => {
-    for (const key of ["selector: selector(el)", "xpath: xpath(el)", "pseudo: selected", "rect: { x:", "source: source(el)", "text:", "styles:", "attributes:"]) {
+  test("annotation payload carries selector, xpath, pseudo, rect, viewport, and source fields", () => {
+    for (const key of ["selector: selector(el)", "xpath: xpath(el)", "pseudo: selected", "rect: { x:", "viewport: active", "source: source(el)", "text:", "styles:", "attributes:"]) {
       expect(client).toContain(key)
     }
+  })
+
+  test("viewport dialog offers device presets and custom size controls", () => {
+    expect(client).toContain('const presets = [')
+    expect(client).toContain('{ label:t("desktop"), width:1440, height:900 }')
+    expect(client).toContain('{ label:t("laptop"), width:1280, height:800 }')
+    expect(client).toContain('{ label:t("iphone"), width:393, height:852 }')
+    expect(client).toContain('{ label:t("pixel"), width:412, height:915 }')
+    expect(client).toContain('desktop:"Desktop", laptop:"Laptop", iphone:"iPhone 16 Pro", pixel:"Pixel 9"')
+    expect(client).toContain('class="presets"')
+    expect(client).toContain('class="custom"')
+    expect(client).toContain('input class="width" type="number" min="320" max="7680"')
+    expect(client).toContain('input class="height" type="number" min="320" max="4320"')
+    expect(client).toContain('resize({ label:t("custom"), width, height })')
+    expect(client).toContain('t("sizeError")')
+  })
+
+  test("selected viewports are remembered and sent with the batch", () => {
+    expect(client).toContain("const views = []")
+    expect(client).toContain("const remember = (item) => {")
+    expect(client).toContain("views.push(item)")
+    expect(client).toContain("remember(active)")
+    expect(client).toContain("viewports:views, delivery")
+    expect(client).toContain("views.length = 0")
+  })
+
+  test("send routing offers main, subagent with context, and fresh subagent", () => {
+    expect(client).toContain('modal(t("chooseDelivery"), t("chooseDeliveryBody"))')
+    expect(client).toContain('choice(node, t("main"), t("mainHelp"), () => submit("main"));')
+    expect(client).toContain('choice(node, t("context"), t("contextHelp"), () => submit("subagent-context"));')
+    expect(client).toContain('choice(node, t("fresh"), t("freshHelp"), () => submit("subagent-fresh"));')
+    expect(client).toContain('node.querySelector(".choices button").focus({ preventScroll:true });')
+  })
+
+  test("successful send presents close-window and continue-annotating choices", () => {
+    expect(client).toContain('modal(t("sent"), t("sentBody"))')
+    expect(client).toContain('node.querySelector(".cancel").remove()')
+    expect(client).toContain('choice(node, t("closeWindow"), "", () => { window.close(); setTimeout(() => exit.click(), 100); });')
+    expect(client).toContain('const next = choice(node, t("continue"), "", () => {')
+    expect(client).toContain('next.focus({ preventScroll:true });')
+    expect(client).toContain('count.textContent = t("sent")')
+  })
+
+  test("continue clears notes and viewport history", () => {
+    expect(client).toContain("notes.length = 0;")
+    expect(client).toContain("views.length = 0;")
+    expect(client).toContain('send.textContent = t("send");')
+    expect(client).toContain("close();")
+    expect(client).toContain("refresh();")
   })
 
   test("proxy injects script with concrete target and token values", async () => {
@@ -121,15 +170,19 @@ describe("generated browser script", () => {
       attributes: {},
       styles: { "border-radius": "0px" },
       rect: { x: 0, y: 0, width: 80, height: 32 },
+      viewport: { label: "Desktop", width: 1440, height: 900 },
       source: null,
     }
     const res = await fetch(new URL("/__opencode_inspect/annotations", handle.url), {
       method: "POST",
       headers: { "content-type": "application/json", "x-opencode-inspector": token! },
-      body: JSON.stringify({ target, annotations: [annotation] }),
+      body: JSON.stringify({ target, viewports: [annotation.viewport], delivery: "subagent-context", annotations: [annotation] }),
     })
     expect(res.status).toBe(200)
     expect((received as unknown as Batch).annotations[0].pseudo).toBe("::before")
+    expect((received as unknown as Batch).annotations[0].viewport).toEqual(annotation.viewport)
+    expect((received as unknown as Batch).viewports).toEqual([annotation.viewport])
+    expect((received as unknown as Batch).delivery).toBe("subagent-context")
   })
 
   test("sharp zero corners survive proxy injection", async () => {
