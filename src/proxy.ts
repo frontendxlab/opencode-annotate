@@ -53,11 +53,11 @@ export async function proxy(target: string, submit: (batch: Batch) => Promise<vo
     }
 
     try {
-      if (!req.url || /^https?:\/\//i.test(req.url)) {
+      const url = new URL(req.url ?? "/", base)
+      if (!req.url || url.origin !== base.origin) {
         reply(res, 400, { error: "Invalid request target" })
         return
       }
-      const url = new URL(req.url ?? "/", base)
       const headers = new Headers()
       Object.entries(req.headers).forEach(([key, value]) => {
         if (value) headers.set(key, Array.isArray(value) ? value.join(", ") : value)

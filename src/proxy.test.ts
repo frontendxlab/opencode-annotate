@@ -80,4 +80,22 @@ describe("inspector proxy", () => {
     const invalid = await fetch(new URL("/__opencode_inspect/annotations", handle.url), { method: "POST", headers: { "content-type": "application/json", "x-opencode-inspector": token! }, body: JSON.stringify({ annotations: [] }) })
     expect(invalid.status).toBe(400)
   })
+
+  test("refuses proxy requests for foreign origins", async () => {
+    const target = await fixture()
+    const other = await fixture()
+    const handle = await proxy(target, async () => {})
+    handles.push(handle)
+    const port = Number(new URL(handle.url).port)
+    const otherPort = new URL(other).port
+    const request = `GET http://127.0.0.1:${otherPort}/ HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nConnection: close\r\n\r\n`
+    const raw = await new Promise<string>((resolve, reject) => {
+      Bun.connect({ hostname: "127.0.0.1", port, socket: {
+        data(socket, chunk) { if (chunk.toString().includes("400")) resolve("400") },
+        error(_socket, error) { reject(error) },
+        open(socket) { socket.write(request) },
+      } })
+    })
+    expect(raw).toBe("400")
+  })
 })
