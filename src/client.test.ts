@@ -104,6 +104,9 @@ describe("generated browser script", () => {
     expect(client).toContain('chat.hidden = false')
     expect(client).toContain('chatInput.addEventListener("input"')
     expect(client).toContain('chatInput.style.height = "auto"')
+    expect(client).toContain('chatAdd.hidden = mode === "quick"')
+    expect(client).toContain("__OC_MODE__")
+    expect(client).toContain("__OC_WARNING__")
   })
 
   test("keeps batch and live submissions separate", () => {

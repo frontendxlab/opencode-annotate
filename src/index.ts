@@ -5,6 +5,7 @@ import { prompt } from "./prompt.js"
 import { proxy } from "./proxy.js"
 import { live } from "./live.js"
 import { gate } from "./trust.js"
+import { parse } from "./args.js"
 import type { Handle } from "./types.js"
 
 export default Plugin.define({
@@ -48,7 +49,7 @@ export default Plugin.define({
       }
     })().catch(() => {}) : Promise.resolve()
 
-    const open = async (raw: string | undefined, sessionID: string) => {
+      const open = async (raw: string | undefined, sessionID: string, options = parse(raw)) => {
       const fallback = typeof ctx.options.url === "string" ? ctx.options.url : undefined
       const explicit = raw || fallback ? normalize(raw || fallback || "") : null
       const target = explicit ?? await detect(ctx.location.directory)
@@ -67,7 +68,7 @@ export default Plugin.define({
        sessions.set(sessionID, state)
        const handle = await proxy(target, async (batch) => {
          await ctx.session.prompt({ sessionID, text: prompt(batch), delivery: "steer" })
-       }, state)
+        }, state, options)
       active.set(sessionID, handle)
        handle.attach(launch(selected, handle.url))
       return { target, inspector: handle.url, browser: selected.name }
@@ -75,7 +76,8 @@ export default Plugin.define({
 
     const command = await ctx.command.transform((editor) => {
       const execute = async ({ sessionID, prompt: input }: { sessionID: string; prompt: { text: string } }) => {
-        const result = await open(input.text, sessionID)
+        const options = parse(input.text)
+        const result = await open(options.url, sessionID, options)
         if (result) {
           await ctx.session.synthetic({ sessionID, text: `Visual inspector opened for ${result.target} using ${result.browser}. Add one or more annotations in the browser, then select Send to OpenCode.` })
           return
@@ -99,14 +101,21 @@ export default Plugin.define({
         description: "Open a browser visual inspector for a running web application",
         input: {
           type: "object",
-          properties: { url: { type: "string", description: "Reachable http or https application URL on 127.0.0.1 or localhost by default; public and private network targets need OPENCODE_INSPECT_ALLOW_PUBLIC=1 or OPENCODE_INSPECT_ALLOW_PRIVATE=1" } },
+          properties: {
+            url: { type: "string", description: "Reachable http or https application URL on 127.0.0.1 or localhost by default; public and private network targets need OPENCODE_INSPECT_ALLOW_PUBLIC=1 or OPENCODE_INSPECT_ALLOW_PRIVATE=1" },
+            model: { type: "string", description: "provider/model-id" },
+            mode: { type: "string", enum: ["batch", "quick"] },
+            context: { type: "string", enum: ["default", "fork"] },
+          },
           required: ["url"],
           additionalProperties: false,
         },
         options: { namespace: "visual" },
         execute: async (value, tool) => {
-          const input = value as { url: string }
-          const result = await open(input.url, tool.sessionID)
+          const input = value as { url: string; model?: string; mode?: string; context?: string }
+          const raw = [input.url, input.model && `--model=${input.model}`, input.mode && `--mode=${input.mode}`, input.context && `--context=${input.context}`].filter(Boolean).join(" ")
+          const options = parse(raw)
+          const result = await open(options.url, tool.sessionID, options)
           if (!result) throw new Error(`Could not open ${input.url}`)
           return { content: `Visual inspector opened at ${result.inspector} for ${result.target} using ${result.browser}. Waiting for the user to submit annotations.` }
         },

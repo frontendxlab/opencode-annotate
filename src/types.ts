@@ -61,3 +61,8 @@ export type Handle = {
   stop(): Promise<void>
   attach(control: BrowserControl): void
 }
+
+export type InspectorOptions = {
+  mode?: "batch" | "quick"
+  warning?: string
+}

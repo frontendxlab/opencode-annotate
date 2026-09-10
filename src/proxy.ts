@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { randomUUID } from "node:crypto"
 import { Readable } from "node:stream"
 import { client } from "./client.js"
-import type { Batch, BrowserControl, Handle, LiveRequest, Viewport } from "./types.js"
+import type { Batch, BrowserControl, Handle, InspectorOptions, LiveRequest, Viewport } from "./types.js"
 import type { LiveEvent } from "./live.js"
 import { batch } from "./validate.js"
 
@@ -132,7 +132,7 @@ function liveBatch(value: unknown): { id: string; batch: Batch } | null {
   return result ? { id: item.requestID, batch: result } : null
 }
 
-export async function proxy(target: string, submit: (batch: Batch) => Promise<void>, service?: LiveService, options: ProxyOptions = {}): Promise<Handle> {
+export async function proxy(target: string, submit: (batch: Batch) => Promise<void>, service?: LiveService, options: ProxyOptions & InspectorOptions = {}): Promise<Handle> {
   const base = new URL(target)
   const token = randomUUID()
   const jar = new Map<string, Cookie>()
@@ -322,7 +322,7 @@ export async function proxy(target: string, submit: (batch: Batch) => Promise<vo
       const type = output.get("content-type") ?? ""
       if (type.includes("text/html")) {
         const text = await html(upstream, htmlLimit)
-        const script = client.replace("__OC_TARGET__", () => JSON.stringify(base.toString())).replace("__OC_TOKEN__", () => JSON.stringify(token))
+        const script = client.replace("__OC_TARGET__", () => JSON.stringify(base.toString())).replace("__OC_TOKEN__", () => JSON.stringify(token)).replace("__OC_MODE__", () => JSON.stringify(options.mode ?? "batch")).replace("__OC_WARNING__", () => JSON.stringify(options.warning ?? ""))
         const tag = `<script id="__oc-inspector-script">${script}</script>`
         const end = /<\/body\s*>/i
         const outputText = end.test(text) ? text.replace(end, `${tag}</body>`) : text + tag

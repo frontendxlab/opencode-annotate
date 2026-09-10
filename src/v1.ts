@@ -5,6 +5,7 @@ import { prompt } from "./prompt.js"
 import { proxy } from "./proxy.js"
 import { live } from "./live.js"
 import { gate } from "./trust.js"
+import { parse } from "./args.js"
 import type { Handle } from "./types.js"
 
 const plugin: Plugin = async ({ client, directory }) => {
@@ -19,7 +20,8 @@ const plugin: Plugin = async ({ client, directory }) => {
   }
 
   const open = async (raw: string | undefined, sessionID: string) => {
-    const explicit = raw ? normalize(raw) : null
+    const options = parse(raw)
+    const explicit = options.url ? normalize(options.url) : null
     const target = explicit ?? await detect(directory)
     if (!target) return null
     const refused = gate(target)
@@ -32,7 +34,7 @@ const plugin: Plugin = async ({ client, directory }) => {
     sessions.get(sessionID)?.stop()
     sessions.delete(sessionID)
     const service = live(submit(sessionID))
-    const handle = await proxy(target, submit(sessionID), service)
+    const handle = await proxy(target, submit(sessionID), service, options)
     sessions.set(sessionID, service)
     active.set(sessionID, handle)
     handle.attach(launch(selected, handle.url))
@@ -44,7 +46,7 @@ const plugin: Plugin = async ({ client, directory }) => {
       visual_inspect: tool({
         description: "Open a browser visual inspector for a running web application",
         args: {
-          url: tool.schema.string().optional().describe("Reachable http or https application URL on 127.0.0.1 or localhost by default; public and private network targets need OPENCODE_INSPECT_ALLOW_PUBLIC=1 or OPENCODE_INSPECT_ALLOW_PRIVATE=1"),
+          url: tool.schema.string().optional().describe("URL followed by optional --model provider/model-id, --mode batch|quick, and --context default|fork"),
         },
         async execute(args, context) {
           const result = await open(args.url, context.sessionID)

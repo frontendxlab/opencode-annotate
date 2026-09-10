@@ -1,6 +1,6 @@
 {
   "name": "opencode-visual-inspector",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Select web UI elements and send precise visual change requests to OpenCode",
   "type": "module",
   "exports": {
@@ -31,7 +31,7 @@
     "type": "git",
     "url": "git+https://github.com/frontendxlab/opencode-annotate.git"
   },
-  "homepage": "https://github.com/frontendxlab/opencode-annotate#readme",
+  "homepage": "https://opencode-annotate.frontendx.dev",
   "bugs": "https://github.com/frontendxlab/opencode-annotate/issues",
   "license": "MIT"
 }

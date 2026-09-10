@@ -2,6 +2,8 @@
 
 An OpenCode v1 and v2 plugin for selecting rendered web elements, attaching visual change requests, and sending the complete annotation batch to the active coding session.
 
+Documentation: https://opencode-annotate.frontendx.dev
+
 ## Requirements
 
 - OpenCode v1 or v2
@@ -89,6 +91,21 @@ For local development of either version, add the package directory to `opencode.
 ```
 
 ## Use
+
+`/inspect` accepts optional validated controls:
+
+```text
+/inspect http://localhost:5173 --model openai/gpt-5.6-luna --mode quick --context=fork
+```
+
+- `--model provider/model-id` selects a provider and model identifier.
+- `--mode batch|quick` selects batch annotation or live-change mode. The default is `batch`.
+- `--context default|fork` selects the current session or a forked context. The default is `default`.
+- `--context:fork` is accepted as an alias for `--context=fork`.
+- Invalid values, duplicate options, extra URLs, and malformed model identifiers are rejected before the inspector opens.
+- A model combined with `context=default` displays a yellow warning that the current session model will change.
+
+The options are validated and carried into the inspector. `quick` hides the batch action and presents the live-change flow. Model switching and fork-session execution remain host-session operations and must be supported by the active OpenCode adapter before they can take effect.
 
 Open a known URL:
 

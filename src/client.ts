@@ -4,6 +4,8 @@ export const client = String.raw`(() => {
 
   const app = __OC_TARGET__;
   const token = __OC_TOKEN__;
+  const mode = __OC_MODE__;
+  const warning = __OC_WARNING__;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
   const copy = {
      inspect:"Inspect", toolbar:"OpenCode visual inspector", noAnnotations:"No annotations", annotation:"annotation", annotations:"annotations", clear:"Clear", send:"Send to OpenCode", exit:"Exit inspector", addToBatch:"Add to batch", inspectOn:"Inspect mode on. Focus a page element and press Alt+Shift+I to annotate.", inspectOff:"Inspect mode off. Page interactions restored.", added:"Annotation added to batch.", sendingStatus:"Sending annotations.", sentStatus:"Annotations sent.", retryStatus:"Sending failed. Retry.", actualViewport:"Viewport is now {width} by {height}.",
@@ -20,7 +22,7 @@ export const client = String.raw`(() => {
   const host = document.createElement("div");
   host.id = "__oc-inspector";
   const root = host.attachShadow({ mode: "open" });
-   root.innerHTML = '<style></style><div class="box" aria-hidden="true"></div><div class="bar" role="toolbar"><span class="brand"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 13.6 4.7v6.6L8 14.5l-5.6-3.2V4.7L8 1.5Zm0 2.1L4.2 5.8v4.4L8 12.4l3.8-2.2V5.8L8 3.6Z"/></svg><span data-copy="inspect"></span></span><button class="inspect secondary" type="button" data-copy="inspect"></button><button class="view secondary" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3" width="11" height="8" rx="1.2"/><path d="M6 13h4"/></svg><span class="view-label"></span></button><span class="count" aria-live="polite" data-copy="noAnnotations"></span><span class="rule"></span><button class="clear secondary" type="button" disabled data-copy="clear"></button><button class="send primary" type="button" disabled data-copy="send"></button><button class="exit icon" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4.3 4.3 7.4 7.4m0-7.4-7.4 7.4"/></svg></button><span class="status" role="status" aria-live="polite" aria-atomic="true"></span></div><section class="chat" role="region" hidden><div class="chat-head"><div class="title" data-copy="chatTitle"></div><div class="meta"></div><span class="target-label" data-copy="target"></span><div class="targets"></div></div><div class="log" role="log" aria-live="polite" aria-relevant="additions text"></div><div class="composer"><label for="oc-change" data-copy="change"></label><textarea id="oc-change" rows="1" aria-describedby="oc-change-error"></textarea><div class="error" id="oc-change-error" role="alert" hidden></div><div class="chat-actions"><button class="cancel secondary" type="button" data-copy="cancel"></button><button class="add secondary" type="button" data-copy="addToBatch"></button><button class="live primary" type="button" data-copy="changeLive"></button></div></div></section>';
+   root.innerHTML = '<style></style><div class="box" aria-hidden="true"></div><div class="bar" role="toolbar"><span class="brand"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 13.6 4.7v6.6L8 14.5l-5.6-3.2V4.7L8 1.5Zm0 2.1L4.2 5.8v4.4L8 12.4l3.8-2.2V5.8L8 3.6Z"/></svg><span data-copy="inspect"></span></span><button class="inspect secondary" type="button" data-copy="inspect"></button><button class="view secondary" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3" width="11" height="8" rx="1.2"/><path d="M6 13h4"/></svg><span class="view-label"></span></button><span class="count" aria-live="polite" data-copy="noAnnotations"></span><span class="rule"></span><span class="warning" role="status"></span><button class="clear secondary" type="button" disabled data-copy="clear"></button><button class="send primary" type="button" disabled data-copy="send"></button><button class="exit icon" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4.3 4.3 7.4 7.4m0-7.4-7.4 7.4"/></svg></button><span class="status" role="status" aria-live="polite" aria-atomic="true"></span></div><section class="chat" role="region" hidden><div class="chat-head"><div class="title" data-copy="chatTitle"></div><div class="meta"></div><span class="target-label" data-copy="target"></span><div class="targets"></div></div><div class="log" role="log" aria-live="polite" aria-relevant="additions text"></div><div class="composer"><label for="oc-change" data-copy="change"></label><textarea id="oc-change" rows="1" aria-describedby="oc-change-error"></textarea><div class="error" id="oc-change-error" role="alert" hidden></div><div class="chat-actions"><button class="cancel secondary" type="button" data-copy="cancel"></button><button class="add secondary" type="button" data-copy="addToBatch"></button><button class="live primary" type="button" data-copy="changeLive"></button></div></div></section>';
   const css = function(){/*
     :host{all:initial;position:fixed;inset:0;z-index:2147483644;pointer-events:none;color-scheme:dark;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;line-height:1.4;-webkit-font-smoothing:antialiased;--spring:linear(0,0.008 1.1%,0.032 2.2%,0.123 4.7%,0.318 7.6%,0.607 11%,0.835 14.2%,0.944 16.2%,1.018 18.6%,1.05 21.5%,1.052 24.5%,1.033 28.2%,1.007 33%,0.994 38.7%,0.993 46.4%,1.001 61%,1);--out:cubic-bezier(.23,1,.32,1);--panel:rgba(24,24,27,.92);--panel-solid:#18181b;--raised:#27272a;--line:rgba(255,255,255,.11);--muted:#a1a1aa;--text:#fafafa;--accent:#fff;--accent-text:#18181b}
     *{box-sizing:border-box}
@@ -32,7 +34,8 @@ export const client = String.raw`(() => {
     .brand svg{width:16px;height:16px;fill:currentColor}
     .view{gap:6px;color:var(--muted);font-variant-numeric:tabular-nums}
     .view svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.35;stroke-linecap:round}
-    .count{min-width:80px;color:var(--muted);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+     .count{min-width:80px;color:var(--muted);font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+     .warning{max-width:260px;color:#facc15;font-size:12px}
     .rule{width:1px;height:20px;background:var(--line)}
     button{display:inline-flex;align-items:center;justify-content:center;height:32px;padding:0 11px;color:var(--text);background:transparent;border:0;border-radius:8px;cursor:pointer;pointer-events:auto;transition:transform 140ms var(--spring),background-color 140ms var(--out),color 140ms var(--out),opacity 140ms var(--out)}
     button:hover:not(:disabled){background:rgba(255,255,255,.09)}
@@ -109,6 +112,8 @@ export const client = String.raw`(() => {
   fill(root);
   root.querySelector(".bar").setAttribute("aria-label", t("toolbar"));
   root.querySelector(".exit").setAttribute("aria-label", t("exit"));
+  root.querySelector(".warning").textContent = warning;
+  root.querySelector(".warning").hidden = !warning;
   document.documentElement.append(host);
 
   const box = root.querySelector(".box");
@@ -386,7 +391,7 @@ export const client = String.raw`(() => {
   };
    const inspect = (el, x, y) => {
       close(true); chatClose(false); prior = el instanceof HTMLElement && el.isConnected ? el : toggle; target = el; shape(el);
-     chatMeta.textContent = selector(el); chatTargets.replaceChildren(); chatLog.replaceChildren(); chatInput.value = ""; chatInput.disabled = false; chatLive.disabled = false; chatAdd.disabled = false;
+      chatMeta.textContent = selector(el); chatTargets.replaceChildren(); chatLog.replaceChildren(); chatInput.value = ""; chatInput.disabled = false; chatLive.disabled = false; chatAdd.disabled = false; chatAdd.hidden = mode === "quick";
      const targets = [[null, t("element")], ...(pseudo(el, "::before") ? [["::before", "::before"]] : []), ...(pseudo(el, "::after") ? [["::after", "::after"]] : [])];
      selected = null;
      for (const [value, label] of targets) {
