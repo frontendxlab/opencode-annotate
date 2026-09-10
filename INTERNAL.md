@@ -75,5 +75,5 @@ Tests cover argument parsing, client contract generation, proxy limits and authe
 4. Verify `/inspect`, `/inpect`, `visual.inspect`, and `visual_inspect`.
 5. Verify loopback defaults and private/public opt-ins.
 6. Verify browser cleanup and viewport behavior with real Chromium.
-7. Update the public docs page and custom-domain deployment if documentation changes.
+7. Update the public docs page and deploy `docs/` to the `opencode-annotate` Cloudflare Pages project if documentation changes.
 8. Push the release commit and update the global plugin installation.
