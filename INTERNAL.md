@@ -4,6 +4,8 @@
 
 `opencode-visual-inspector` opens a local browser inspector for a reachable web application. It captures rendered element context, viewport dimensions, pseudo-element targets, and a bounded description of the requested change.
 
+The published package also exposes `bin/opencode-visual-inspector.mjs`. `npx` and `pnpm dlx` run its interactive installer, which detects V1, V2, and desktop availability, updates global or project configuration, backs up existing files, and optionally verifies Chrome or Chromium against a local smoke page.
+
 The package has isolated adapters:
 
 - V2 package root: `@frontendxlab/opencode-visual-inspector`
@@ -12,6 +14,8 @@ The package has isolated adapters:
 ## Entry points
 
 V2 uses `@opencode/plugin` and registers `/inspect`, `/inpect`, and `visual.inspect`. V1 uses `@opencode-ai/plugin` and registers `visual_inspect`. V1 command registration is supplied separately through `commands/inspect.md`.
+
+The installer uses native V2 and V1 plugin commands for global setup when those binaries are available. It writes the V1 `plugin` list and V2 `plugins` list as a fallback or for project scope. Desktop V2 uses the same user configuration as the V2 CLI. It never edits the OpenCode executable, desktop bundle, or browser installation.
 
 ## Argument contract
 

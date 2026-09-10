@@ -13,12 +13,38 @@ Documentation: https://opencode-annotate.frontendx.dev
 
 ## Install
 
-### OpenCode v2
+### Automatic setup
 
-Install globally from GitHub:
+Run the interactive installer. It detects the available OpenCode CLI and desktop app, updates the matching global configuration, creates a timestamped backup, and can launch a browser smoke test:
 
 ```sh
-opencode2 plugin add 'git+https://github.com/frontendxlab/opencode-annotate.git#main'
+npx @frontendxlab/opencode-visual-inspector
+# or
+pnpm dlx @frontendxlab/opencode-visual-inspector
+```
+
+Non-interactive setup:
+
+```sh
+npx @frontendxlab/opencode-visual-inspector --yes --smoke-test
+```
+
+Useful controls:
+
+```sh
+npx @frontendxlab/opencode-visual-inspector --dry-run
+npx @frontendxlab/opencode-visual-inspector --scope project --target v2
+npx @frontendxlab/opencode-visual-inspector --scope global --target v1 --no-smoke-test
+```
+
+The installer does not install OpenCode or a browser. For global setup it uses the native `opencode2 plugin add` and V1 `opencode plugin --global` commands when available. Otherwise it edits OpenCode configuration directly. It always verifies an existing Chrome or Chromium executable only.
+
+### OpenCode v2
+
+Install globally with the automatic setup command above. Manual package setup:
+
+```sh
+opencode2 plugin add @frontendxlab/opencode-visual-inspector
 ```
 
 OpenCode adds the plugin to your global V2 configuration, so `/inspect` and the `visual.inspect` tool are available in every project. Reopen an existing TUI if it was running during installation. After an npm release, the equivalent registry install is `opencode2 plugin add @frontendxlab/opencode-visual-inspector`.

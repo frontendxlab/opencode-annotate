@@ -9,5 +9,5 @@
     "types": ["bun", "node"],
     "lib": ["ESNext", "DOM"]
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "bin/**/*.d.mts"]
 }
