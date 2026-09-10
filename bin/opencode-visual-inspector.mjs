@@ -8,6 +8,7 @@ import { spawn, spawnSync } from "node:child_process"
 import { createInterface } from "node:readline/promises"
 
 export const pkg = "@frontendxlab/opencode-visual-inspector"
+export const v1pkg = `${pkg}/v1`
 const old = ["opencode-visual-inspector", "git+https://github.com/frontendxlab/opencode-annotate.git#main"]
 
 const help = `OpenCode Visual Inspector installer
@@ -47,7 +48,6 @@ const start = (file, args) => new Promise((resolvePromise) => {
 const native = async (found, target) => {
   const jobs = []
   if ((target === "all" || target === "v2") && found.v2) jobs.push({ name: "V2", file: found.v2, args: ["plugin", "add", pkg] })
-  if ((target === "all" || target === "v1") && found.v1) jobs.push({ name: "V1", file: found.v1, args: ["plugin", pkg, "--global"] })
   const results = []
   for (const job of jobs) {
     const result = await start(job.file, job.args)
@@ -168,22 +168,22 @@ const strings = (text) => [...text.matchAll(/"(?:\\.|[^"\\])*"/g)].flatMap((item
   }
 })
 
-const add = (text, key) => {
+const add = (text, key, spec = pkg) => {
   const found = array(text, key)
   if (found) {
     const body = text.slice(found.start + 1, found.end)
     const values = strings(body)
-    if (values.includes(pkg)) return { text, changed: false, key, action: "already configured" }
+    if (values.includes(spec)) return { text, changed: false, key, action: "already configured" }
     const replace = values.find((value) => old.includes(value))
     if (replace) {
       const from = JSON.stringify(replace)
-      const to = JSON.stringify(pkg)
+      const to = JSON.stringify(spec)
       return { text: text.slice(0, found.start + 1) + body.replace(from, to) + text.slice(found.end), changed: true, key, action: "updated existing plugin" }
     }
     const tail = body.match(/\s*$/)?.[0] || ""
     const core = body.slice(0, body.length - tail.length)
     const sep = core.trim() ? (core.trimEnd().endsWith(",") ? "\n" : ",\n") : "\n"
-    const next = `${core}${sep}    ${JSON.stringify(pkg)}\n${tail}`
+    const next = `${core}${sep}    ${JSON.stringify(spec)}\n${tail}`
     return { text: text.slice(0, found.start + 1) + next + text.slice(found.end), changed: true, key, action: "added plugin" }
   }
   const end = text.lastIndexOf("}")
@@ -193,12 +193,12 @@ const add = (text, key) => {
   const tail = before.slice(core.length)
   const empty = /^[{\s]*$/.test(before)
   const sep = empty ? "\n" : ",\n"
-  const next = `${core}${sep}  ${JSON.stringify(key)}: [\n    ${JSON.stringify(pkg)}\n  ]${tail}\n${text.slice(end)}`
+  const next = `${core}${sep}  ${JSON.stringify(key)}: [\n    ${JSON.stringify(spec)}\n  ]${tail}\n${text.slice(end)}`
   return { text: next, changed: true, key, action: "created plugin list" }
 }
 
-export const patch = (text, keys) => keys.reduce((state, key) => {
-  const result = add(state.text, key)
+export const patch = (text, keys, spec = pkg) => keys.reduce((state, key) => {
+  const result = add(state.text, key, spec)
   return { text: result.text, changes: result.changed ? [...state.changes, result] : state.changes }
 }, { text, changes: [] })
 
@@ -294,7 +294,10 @@ export const main = async (args = process.argv.slice(2)) => {
     : choice.target === "v1" && !nativeNames.has("V1") ? ["plugin"]
       : choice.target === "v2" && !nativeNames.has("V2") ? ["plugins"]
         : []
-  const result = patch(text, fallback)
+  const result = fallback.reduce((state, key) => {
+    const next = patch(state.text, [key], key === "plugin" ? v1pkg : pkg)
+    return { text: next.text, changes: [...state.changes, ...next.changes] }
+  }, { text, changes: [] })
   console.log(`\nConfig: ${path}`)
   console.log(`Detected: ${found.v2 ? "opencode2 " : ""}${found.v1 ? "opencode " : ""}${found.gui ? "GUI " : ""}`.trim() || "no OpenCode executable")
   nativeResults.forEach((item) => console.log(`${item.ok ? "PASS" : "WARN"}: ${item.name} native installer${item.ok ? " completed" : ` failed: ${item.output.trim().slice(-240)}`}`))

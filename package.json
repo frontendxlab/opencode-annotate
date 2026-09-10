@@ -1,8 +1,9 @@
 {
   "name": "@frontendxlab/opencode-visual-inspector",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Select web UI elements and send precise visual change requests to OpenCode",
   "type": "module",
+  "main": "./src/index.ts",
   "bin": {
     "opencode-visual-inspector": "./bin/opencode-visual-inspector.mjs"
   },

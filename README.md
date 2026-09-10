@@ -37,7 +37,7 @@ npx @frontendxlab/opencode-visual-inspector --scope project --target v2
 npx @frontendxlab/opencode-visual-inspector --scope global --target v1 --no-smoke-test
 ```
 
-The installer does not install OpenCode or a browser. For global setup it uses the native `opencode2 plugin add` and V1 `opencode plugin --global` commands when available. Otherwise it edits OpenCode configuration directly. It always verifies an existing Chrome or Chromium executable only.
+The installer does not install OpenCode or a browser. For global V2 setup it uses the native `opencode2 plugin add` command when available. V1 uses the `/v1` package export through the legacy `plugin` configuration because the V1 adapter is a package subpath, not a standalone npm package. It always verifies an existing Chrome or Chromium executable only.
 
 ### OpenCode v2
 

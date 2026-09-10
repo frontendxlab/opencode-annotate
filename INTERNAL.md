@@ -15,7 +15,7 @@ The package has isolated adapters:
 
 V2 uses `@opencode/plugin` and registers `/inspect`, `/inpect`, and `visual.inspect`. V1 uses `@opencode-ai/plugin` and registers `visual_inspect`. V1 command registration is supplied separately through `commands/inspect.md`.
 
-The installer uses native V2 and V1 plugin commands for global setup when those binaries are available. It writes the V1 `plugin` list and V2 `plugins` list as a fallback or for project scope. Desktop V2 uses the same user configuration as the V2 CLI. It never edits the OpenCode executable, desktop bundle, or browser installation.
+The installer uses the native V2 plugin command for global setup when `opencode2` is available. It writes the V1 `plugin` list with the `/v1` package export because that adapter is a package subpath, not a standalone npm package. Desktop V2 uses the same user configuration as the V2 CLI. It never edits the OpenCode executable, desktop bundle, or browser installation.
 
 ## Argument contract
 

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { patch } from "../bin/opencode-visual-inspector.mjs"
+import { patch, pkg, v1pkg } from "../bin/opencode-visual-inspector.mjs"
 
 test("installer adds both adapter keys and remains idempotent", () => {
   const source = '{\n  "plugin": ["old-plugin"],\n  "plugins": ["git+https://github.com/frontendxlab/opencode-annotate.git#main"]\n}\n'
@@ -24,11 +24,8 @@ test("installer preserves JSONC comments", () => {
 })
 
 test("installer creates valid root arrays in an empty config", () => {
-  const result = patch("{\n}\n", ["plugin", "plugins"])
-  expect(JSON.parse(result.text)).toEqual({
-    plugin: ["@frontendxlab/opencode-visual-inspector"],
-    plugins: ["@frontendxlab/opencode-visual-inspector"],
-  })
+  const result = patch(patch("{\n}\n", ["plugin"], v1pkg).text, ["plugins"])
+  expect(JSON.parse(result.text)).toEqual({ plugin: [v1pkg], plugins: [pkg] })
 })
 
 test("installer preserves project JSONC placement", () => {
@@ -36,4 +33,8 @@ test("installer preserves project JSONC placement", () => {
   const result = patch(source, ["plugins"])
   expect(result.text).toContain("// project config")
   expect(result.text).toContain('"@frontendxlab/opencode-visual-inspector"')
+})
+
+test("V1 and V2 use separate package specs", () => {
+  expect(v1pkg).toBe(`${pkg}/v1`)
 })
