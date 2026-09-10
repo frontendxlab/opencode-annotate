@@ -21,7 +21,7 @@ Install globally from GitHub:
 opencode2 plugin add 'git+https://github.com/frontendxlab/opencode-annotate.git#main'
 ```
 
-OpenCode adds the plugin to your global V2 configuration, so `/inspect` and the `visual.inspect` tool are available in every project. Reopen an existing TUI if it was running during installation. After an npm release, the equivalent registry install is `opencode2 plugin add opencode-visual-inspector`.
+OpenCode adds the plugin to your global V2 configuration, so `/inspect` and the `visual.inspect` tool are available in every project. Reopen an existing TUI if it was running during installation. After an npm release, the equivalent registry install is `opencode2 plugin add @frontendxlab/opencode-visual-inspector`.
 
 Verify the installation:
 
@@ -31,21 +31,21 @@ opencode2 plugin list
 
 ### OpenCode v1
 
-V1 and V2 use different plugin APIs and the dependencies are pinned independently (`@opencode/plugin@0.0.0-beta-19296` for V2, `@opencode-ai/plugin@0.0.0-v1-202510310553` for V1). The package root remains the V2 plugin. The V1 adapter is exported separately from `opencode-visual-inspector/v1`.
+V1 and V2 use different plugin APIs and the dependencies are pinned independently (`@opencode/plugin@0.0.0-beta-19296` for V2, `@opencode-ai/plugin@0.0.0-v1-202510310553` for V1). The package root remains the V2 plugin. The V1 adapter is exported separately from `@frontendxlab/opencode-visual-inspector/v1`.
 
 V1 does not register `/inspect`, because V1 plugins have no documented command registration API. It registers the `visual_inspect` tool instead, matching the documented V1 `Plugin` and `tool` APIs from `@opencode-ai/plugin`.
 
 Install the package locally:
 
 ```sh
-npm install opencode-visual-inspector
+npm install @frontendxlab/opencode-visual-inspector
 ```
 
 Add the V1 entrypoint to the V1 plugin list in `opencode.json`:
 
 ```jsonc
 {
-  "plugin": ["opencode-visual-inspector/v1"]
+  "plugin": ["@frontendxlab/opencode-visual-inspector/v1"]
 }
 ```
 
@@ -53,7 +53,7 @@ Or, for a local plugin file, configure the published entrypoint explicitly accor
 
 ```jsonc
 {
-  "plugin": ["./node_modules/opencode-visual-inspector/src/v1.ts"]
+  "plugin": ["./node_modules/@frontendxlab/opencode-visual-inspector/src/v1.ts"]
 }
 ```
 
@@ -65,7 +65,7 @@ V1 supports the `visual_inspect` tool but not plugin command registration. The p
 
 ```sh
 mkdir -p .opencode/commands
-cp node_modules/opencode-visual-inspector/commands/inspect.md .opencode/commands/inspect.md
+cp node_modules/@frontendxlab/opencode-visual-inspector/commands/inspect.md .opencode/commands/inspect.md
 ```
 
 The template:
@@ -175,7 +175,7 @@ Plugin options can also set the browser:
 {
   "plugins": [
     {
-      "package": "opencode-visual-inspector",
+      "package": "@frontendxlab/opencode-visual-inspector",
       "options": {
         "browser": "/usr/bin/chromium"
       }

@@ -6,8 +6,8 @@
 
 The package has isolated adapters:
 
-- V2 package root: `opencode-visual-inspector`
-- V1 adapter: `opencode-visual-inspector/v1`
+- V2 package root: `@frontendxlab/opencode-visual-inspector`
+- V1 adapter: `@frontendxlab/opencode-visual-inspector/v1`
 
 ## Entry points
 
