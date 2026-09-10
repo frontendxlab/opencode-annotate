@@ -204,7 +204,8 @@ const tokens = (text) => {
       continue
     }
     let j = i
-    while (j < text.length && !`${punct}\s"/`.includes(text[j])) j++
+    while (j < text.length && !/[{}[\],:\s"/]/.test(text[j])) j++
+    if (j === i) j++
     list.push({ type: "other", start: i, end: j, value: text.slice(i, j) })
     i = j
   }

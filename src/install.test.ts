@@ -69,6 +69,18 @@ test("installer keeps JSONC valid across comment and array styles", () => {
   expect(JSON.parse(stripped).plugins).toEqual([pkg])
 })
 
+test("installer tokenizes booleans, null, and numbers without stalling", () => {
+  const source = '{\n  "$schema": "https://opencode.ai/config.json",\n  "store": false,\n  "verbose": true,\n  "limit": null,\n  "count": 12.5,\n  "plugins": []\n}\n'
+  const result = patch(source, ["plugins"])
+  expect(result.text).toContain('"store": false')
+  expect(result.text).toContain('"count": 12.5')
+  expect(result.text).toContain(`"${pkg}"`)
+})
+
+test("installer rejects a lone slash instead of looping forever", () => {
+  expect(() => patch('{\n  "plugins": [],\n  /\n}\n', ["plugins"])).toThrow()
+})
+
 test("installer refuses to emit invalid JSONC", () => {
   expect(() => patch("{ not valid", ["plugins"])).toThrow()
   expect(() => patch("[]", ["plugins"])).toThrow("root object")
