@@ -197,4 +197,42 @@ describe("V1 plugin adapter", () => {
     process.env.OPENCODE_INSPECT_ALLOW_PRIVATE = "1"
     await expect(inspector.execute({ url: "http://192.168.7.7:1" }, args)).rejects.toThrow("not reachable")
   })
+
+  test("rejects --model because the V1 session API has no model switch", async () => {
+    process.env.OPENCODE_INSPECT_BROWSER = "/bin/true"
+    const target = await app()
+    const hooks = await plugin({ client: { session: { prompt: async () => undefined } } as never, project: {} as never, directory: process.cwd(), worktree: process.cwd(), $: undefined as never })
+    const inspector = hooks.tool?.visual_inspect
+    if (!inspector) throw new Error("V1 visual_inspect tool is missing")
+    const args = { sessionID: "ses-model", messageID: "msg", agent: "build", abort: new AbortController().signal }
+    await expect(inspector.execute({ url: `${target} --model openai/gpt-5.6-luna` }, args)).rejects.toThrow("--model is not supported by this OpenCode adapter")
+  })
+
+  test("routes a forked context through the fork session", async () => {
+    process.env.OPENCODE_INSPECT_BROWSER = "/bin/true"
+    const target = await app()
+    const prompts: Array<{ path: { id: string } }> = []
+    let forked = 0
+    const hooks = await plugin({
+      client: {
+        session: {
+          prompt: async (value: { path: { id: string } }) => { prompts.push(value) },
+          fork: async () => { forked++; return { data: { id: "ses-forked" } } },
+        },
+      } as never,
+      project: {} as never,
+      directory: process.cwd(),
+      worktree: process.cwd(),
+      $: undefined as never,
+    })
+    const inspector = hooks.tool?.visual_inspect
+    if (!inspector) throw new Error("V1 visual_inspect tool is missing")
+    const result = await inspector.execute({ url: `${target} --context=fork` }, { sessionID: "ses-parent", messageID: "msg", agent: "build", abort: new AbortController().signal })
+    const location = result.match(/at (http:\/\/127\.0\.0\.1:\d+[^ ]*) for/)
+    if (!location) throw new Error(`Inspector URL missing from result: ${result}`)
+    expect(forked).toBe(1)
+    const sent = await send(location[1], target)
+    expect(sent.response.status).toBe(200)
+    expect(prompts[0]?.path.id).toBe("ses-forked")
+  })
 })

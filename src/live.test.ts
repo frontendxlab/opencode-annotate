@@ -53,4 +53,40 @@ describe("live jobs", () => {
     other.stop()
     expect(other.status("c")).toBeNull()
   })
+
+  test("a rejected request cannot fail a newer request", async () => {
+    const rejects: Array<(reason?: unknown) => void> = []
+    const service = live(() => new Promise<void>((_resolve, fail) => { rejects.push(fail) }))
+    service.create("A", value)
+    service.cancel("A")
+    service.create("B", value)
+    rejects[0](new Error("A failed"))
+    await wait()
+    expect(service.status("B")?.state).toBe("submitting")
+    expect(service.status("B")?.error).toBeUndefined()
+    expect(service.status("A")?.state).toBe("cancelled")
+  })
+
+  test("idle before any busy or activity does not mark success", async () => {
+    const service = live(async () => {})
+    service.create("a", value)
+    service.observe("idle")
+    await wait()
+    expect(service.status("a")?.state).toBe("submitting")
+    service.observe("busy")
+    service.observe("idle")
+    await wait()
+    expect(service.status("a")?.state).toBe("succeeded")
+  })
+
+  test("session activity alone never completes without idle", async () => {
+    const service = live(async () => {})
+    service.create("a", value)
+    service.observe("busy")
+    await wait()
+    expect(service.status("a")?.state).toBe("working")
+    service.observe("idle")
+    await wait()
+    expect(service.status("a")?.state).toBe("succeeded")
+  })
 })

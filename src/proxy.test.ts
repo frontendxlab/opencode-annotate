@@ -118,6 +118,47 @@ describe("inspector proxy", () => {
     expect((received as unknown as Batch).delivery).toBe("subagent-context")
   })
 
+  test("captures a screenshot only when the request opts in", async () => {
+    let received: Batch | null = null
+    let calls = 0
+    const handle = await proxy(await fixture(), async (value) => { received = value })
+    handles.push(handle)
+    handle.attach({
+      ready: Promise.resolve(),
+      resize: async (width, height) => ({ label: "x", width, height }),
+      screenshot: async () => { calls++; return "AAAA" },
+      close: async () => {},
+    })
+    const value = await token(handle)
+    const endpoint = new URL("/__opencode_inspect/annotations", handle.url)
+    const first = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json", "x-opencode-inspector": value }, body: JSON.stringify({ ...payload, screenshot: true }) })
+    expect(first.status).toBe(200)
+    expect(calls).toBe(1)
+    expect((received as unknown as Batch).shots).toEqual([{ mime: "image/png", data: "AAAA" }])
+    const second = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json", "x-opencode-inspector": value }, body: JSON.stringify(payload) })
+    expect(second.status).toBe(200)
+    expect((received as unknown as Batch).shots).toBeUndefined()
+    expect(calls).toBe(1)
+  })
+
+  test("keeps submitting when screenshot capture fails", async () => {
+    let received: Batch | null = null
+    let calls = 0
+    const handle = await proxy(await fixture(), async (value) => { received = value; calls++ })
+    handles.push(handle)
+    handle.attach({
+      ready: Promise.resolve(),
+      resize: async (width, height) => ({ label: "x", width, height }),
+      screenshot: async () => { throw new Error("capture failed") },
+      close: async () => {},
+    })
+    const value = await token(handle)
+    const res = await fetch(new URL("/__opencode_inspect/annotations", handle.url), { method: "POST", headers: { "content-type": "application/json", "x-opencode-inspector": value }, body: JSON.stringify({ ...payload, screenshot: true }) })
+    expect(res.status).toBe(200)
+    expect(calls).toBe(1)
+    expect((received as unknown as Batch).shots).toBeUndefined()
+  })
+
   test("rejects malformed annotation batches", async () => {
     const handle = await proxy(await fixture(), async () => {})
     handles.push(handle)
@@ -227,7 +268,7 @@ describe("inspector proxy", () => {
     expect((await fetch(handle.url)).status).toBe(200)
     const close = await fetch(endpoint, { method: "POST", headers: { "x-opencode-inspector": value }, body: JSON.stringify({ action: "close" }) })
     expect(close.status).toBe(200)
-    await wait(10)
+    await wait(60)
     expect((await fetch(handle.url).catch(() => null))?.status).not.toBe(200)
     await handle.stop()
     await handle.stop()
@@ -252,5 +293,28 @@ describe("inspector proxy", () => {
     await handle.stop()
     expect(await stream.text()).toContain("submitting")
     expect(service.active).toBe(false)
+  })
+
+  test("an interrupted upstream body does not crash the proxy", async () => {
+    const server = createServer((req, res) => {
+      if (req.url === "/stream") {
+        res.writeHead(200, { "content-type": "application/octet-stream" })
+        res.write("first")
+        setTimeout(() => res.socket?.destroy(), 5)
+        return
+      }
+      res.writeHead(200, { "content-type": "text/plain" })
+      res.end("ok")
+    })
+    servers.push(server)
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+    const address = server.address()
+    if (!address || typeof address === "string") throw new Error("Fixture server did not start")
+    const handle = await proxy(`http://127.0.0.1:${address.port}`, async () => {})
+    handles.push(handle)
+    const result = await fetch(new URL("/stream", handle.url)).then(async (res) => res.text()).catch((error: unknown) => error)
+    expect(typeof result === "string" || result instanceof Error).toBe(true)
+    await wait(20)
+    expect((await fetch(handle.url)).status).toBe(200)
   })
 })

@@ -150,23 +150,122 @@ const close = (text, start, open, end) => {
   return -1
 }
 
-const array = (text, key) => {
-  const match = new RegExp(`"${key}"\\s*:`).exec(text)
-  if (!match) return null
-  const start = text.indexOf("[", match.index + match[0].length)
-  if (start < 0) throw new Error(`Invalid ${key} array in configuration`)
-  const end = close(text, start, "[", "]")
-  if (end < 0) throw new Error(`Invalid ${key} array in configuration`)
-  return { start, end }
+const punct = "{}[],:"
+
+const tokens = (text) => {
+  const list = []
+  let i = 0
+  while (i < text.length) {
+    const char = text[i]
+    const next = text[i + 1]
+    if (char === "/" && next === "/") {
+      let j = i + 2
+      while (j < text.length && text[j] !== "\n") j++
+      list.push({ type: "comment", start: i, end: j })
+      i = j
+      continue
+    }
+    if (char === "/" && next === "*") {
+      let j = i + 2
+      while (j < text.length && !(text[j] === "*" && text[j + 1] === "/")) j++
+      j = Math.min(j + 2, text.length)
+      list.push({ type: "comment", start: i, end: j })
+      i = j
+      continue
+    }
+    if (char === '"') {
+      let j = i + 1
+      while (j < text.length) {
+        if (text[j] === "\\") {
+          j += 2
+          continue
+        }
+        if (text[j] === '"') {
+          j++
+          break
+        }
+        j++
+      }
+      let value = null
+      try {
+        value = JSON.parse(text.slice(i, j))
+      } catch {}
+      list.push({ type: "string", start: i, end: j, value })
+      i = j
+      continue
+    }
+    if (punct.includes(char)) {
+      list.push({ type: "punct", start: i, end: i + 1, value: char })
+      i++
+      continue
+    }
+    if (/\s/.test(char)) {
+      i++
+      continue
+    }
+    let j = i
+    while (j < text.length && !`${punct}\s"/`.includes(text[j])) j++
+    list.push({ type: "other", start: i, end: j, value: text.slice(i, j) })
+    i = j
+  }
+  return list
 }
 
-const strings = (text) => [...text.matchAll(/"(?:\\.|[^"\\])*"/g)].flatMap((item) => {
-  try {
-    return [JSON.parse(item[0])]
-  } catch {
-    return []
+const next = (list, index) => {
+  for (let i = index + 1; i < list.length; i++) if (list[i].type !== "comment") return list[i]
+  return null
+}
+
+const array = (text, key) => {
+  const list = tokens(text)
+  let depth = 0
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i]
+    if (item.type === "punct") {
+      if (item.value === "{" || item.value === "[") depth++
+      else if (item.value === "}" || item.value === "]") depth--
+      continue
+    }
+    if (depth !== 1 || item.type !== "string" || item.value !== key) continue
+    const colon = next(list, i)
+    if (!colon || colon.value !== ":") continue
+    const open = next(list, list.indexOf(colon))
+    if (!open || open.value !== "[") continue
+    const end = close(text, open.start, "[", "]")
+    if (end < 0) throw new Error(`Invalid ${key} array in configuration`)
+    return { start: open.start, end }
   }
-})
+  return null
+}
+
+const strings = (text) => tokens(text).flatMap((item) => item.type === "string" && typeof item.value === "string" ? [item.value] : [])
+
+const valid = (text) => {
+  const list = tokens(text)
+  let out = ""
+  let cursor = 0
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i]
+    out += text.slice(cursor, item.start)
+    cursor = item.end
+    if (item.type === "comment") {
+      out += text.slice(item.start, item.end).replace(/[^\n]/g, " ")
+      continue
+    }
+    if (item.type === "punct" && item.value === ",") {
+      const follow = next(list, i)
+      if (follow && (follow.value === "}" || follow.value === "]")) continue
+    }
+    out += text.slice(item.start, item.end)
+  }
+  out += text.slice(cursor)
+  try {
+    JSON.parse(out)
+    return true
+  } catch {
+    return false
+  }
+}
 
 const add = (text, key, spec = pkg) => {
   const found = array(text, key)
@@ -176,31 +275,62 @@ const add = (text, key, spec = pkg) => {
     if (values.includes(spec)) return { text, changed: false, key, action: "already configured" }
     const replace = values.find((value) => old.includes(value))
     if (replace) {
-      const from = JSON.stringify(replace)
-      const to = JSON.stringify(spec)
-      return { text: text.slice(0, found.start + 1) + body.replace(from, to) + text.slice(found.end), changed: true, key, action: "updated existing plugin" }
+      const token = tokens(body).find((item) => item.type === "string" && item.value === replace)
+      if (!token) throw new Error(`Cannot locate the existing ${key} entry to replace`)
+      const replaced = `${body.slice(0, token.start)}${JSON.stringify(spec)}${body.slice(token.end)}`
+      return { text: text.slice(0, found.start + 1) + replaced + text.slice(found.end), changed: true, key, action: "updated existing plugin" }
     }
-    const tail = body.match(/\s*$/)?.[0] || ""
-    const core = body.slice(0, body.length - tail.length)
-    const sep = core.trim() ? (core.trimEnd().endsWith(",") ? "\n" : ",\n") : "\n"
-    const next = `${core}${sep}    ${JSON.stringify(spec)}\n${tail}`
-    return { text: text.slice(0, found.start + 1) + next + text.slice(found.end), changed: true, key, action: "added plugin" }
+    const list = tokens(body)
+    const items = list.filter((item) => item.type !== "comment")
+    const last = items[items.length - 1]
+    const entry = `\n    ${JSON.stringify(spec)}\n  `
+    const insertAt = last ? last.end : body.length
+    const suffix = last && last.value === "," ? entry : last ? `,${entry}` : entry
+    const nextBody = `${body.slice(0, insertAt)}${suffix}${body.slice(insertAt)}`
+    return { text: text.slice(0, found.start + 1) + nextBody + text.slice(found.end), changed: true, key, action: "added plugin" }
   }
-  const end = text.lastIndexOf("}")
-  if (end < 0) throw new Error("Configuration must contain a root object")
-  const before = text.slice(0, end)
-  const core = before.trimEnd()
-  const tail = before.slice(core.length)
-  const empty = /^[{\s]*$/.test(before)
-  const sep = empty ? "\n" : ",\n"
-  const next = `${core}${sep}  ${JSON.stringify(key)}: [\n    ${JSON.stringify(spec)}\n  ]${tail}\n${text.slice(end)}`
-  return { text: next, changed: true, key, action: "created plugin list" }
+  const list = tokens(text)
+  let depth = 0
+  let rootOpen = -1
+  let hasProperty = false
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i]
+    if (item.type === "punct" && item.value === "{") {
+      if (depth === 0) {
+        rootOpen = item.start
+        depth = 1
+        continue
+      }
+      depth++
+      continue
+    }
+    if (item.type === "punct" && item.value === "[") {
+      depth++
+      continue
+    }
+    if (item.type === "punct" && (item.value === "}" || item.value === "]")) {
+      depth--
+      continue
+    }
+    if (depth === 1 && item.type === "string") {
+      const colon = next(list, i)
+      if (colon && colon.value === ":") hasProperty = true
+    }
+  }
+  if (rootOpen < 0) throw new Error("Configuration must contain a root object")
+  const entry = `\n  ${JSON.stringify(key)}: [\n    ${JSON.stringify(spec)}\n  ]${hasProperty ? "," : ""}`
+  const result = `${text.slice(0, rootOpen + 1)}${entry}${text.slice(rootOpen + 1)}`
+  return { text: result, changed: true, key, action: "created plugin list" }
 }
 
-export const patch = (text, keys, spec = pkg) => keys.reduce((state, key) => {
-  const result = add(state.text, key, spec)
-  return { text: result.text, changes: result.changed ? [...state.changes, result] : state.changes }
-}, { text, changes: [] })
+export const patch = (text, keys, spec = pkg) => {
+  const output = keys.reduce((state, key) => {
+    const result = add(state.text, key, spec)
+    if (!valid(result.text)) throw new Error(`Refusing to write invalid JSONC while updating ${key}`)
+    return { text: result.text, changes: result.changed ? [...state.changes, result] : state.changes }
+  }, { text, changes: [] })
+  return output
+}
 
 const options = (args) => {
   const opts = { yes: false, dry: false, scope: null, target: null, smoke: null }
@@ -286,7 +416,6 @@ export const main = async (args = process.argv.slice(2)) => {
   const found = detect()
   const choice = await selected(opts, found)
   const path = config(choice.scope)
-  const text = exists(path) ? readFileSync(path, "utf8") : "{\n}\n"
   const nativeResults = choice.scope === "global" && !opts.dry ? await native(found, choice.target) : []
   const nativeNames = new Set(nativeResults.filter((item) => item.ok).map((item) => item.name))
   const fallback = choice.target === "all"
@@ -294,6 +423,7 @@ export const main = async (args = process.argv.slice(2)) => {
     : choice.target === "v1" && !nativeNames.has("V1") ? ["plugin"]
       : choice.target === "v2" && !nativeNames.has("V2") ? ["plugins"]
         : []
+  const text = exists(path) ? readFileSync(path, "utf8") : "{\n}\n"
   const result = fallback.reduce((state, key) => {
     const next = patch(state.text, [key], key === "plugin" ? v1pkg : pkg)
     return { text: next.text, changes: [...state.changes, ...next.changes] }

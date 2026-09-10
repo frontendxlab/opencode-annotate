@@ -1,8 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
 import { randomUUID } from "node:crypto"
-import { Readable } from "node:stream"
+import { Readable, pipeline } from "node:stream"
 import { client } from "./client.js"
-import type { Batch, BrowserControl, Handle, InspectorOptions, LiveRequest, Viewport } from "./types.js"
+import type { Batch, BrowserControl, Handle, InspectorOptions, LiveRequest, Shot, Viewport } from "./types.js"
 import type { LiveEvent } from "./live.js"
 import { batch } from "./validate.js"
 
@@ -124,12 +124,12 @@ export type ProxyOptions = {
   orphan?: number
 }
 
-function liveBatch(value: unknown): { id: string; batch: Batch } | null {
+function liveBatch(value: unknown): { id: string; batch: Batch; screenshot: boolean } | null {
   if (!value || typeof value !== "object") return null
   const item = value as Partial<LiveRequest>
   if (typeof item.requestID !== "string" || item.requestID.length < 1 || item.requestID.length > 100 || !Array.isArray(item.annotations) || item.annotations.length !== 1) return null
   const result = batch({ target: item.target, viewports: item.viewports, delivery: item.delivery, annotations: item.annotations })
-  return result ? { id: item.requestID, batch: result } : null
+  return result ? { id: item.requestID, batch: result, screenshot: (value as { screenshot?: unknown }).screenshot === true } : null
 }
 
 export async function proxy(target: string, submit: (batch: Batch) => Promise<void>, service?: LiveService, options: ProxyOptions & InspectorOptions = {}): Promise<Handle> {
@@ -144,6 +144,17 @@ export async function proxy(target: string, submit: (batch: Batch) => Promise<vo
   let control: BrowserControl | undefined
   const streams = new Set<ServerResponse>()
   const orphan = options.orphan ?? INSPECTOR_ORPHAN_TIMEOUT_MS
+  const shot = options.screenshot === true
+  const capture = async (force = false): Promise<Shot | null> => {
+    if (!shot && !force) return null
+    if (!control) return null
+    try {
+      const data = await control.screenshot()
+      return data ? { mime: "image/png", data } : null
+    } catch {
+      return null
+    }
+  }
   const touch = () => {
     if (stopped) return
     if (timer) clearTimeout(timer)
@@ -242,6 +253,8 @@ export async function proxy(target: string, submit: (batch: Batch) => Promise<vo
         const value = liveBatch(JSON.parse((await body(req)).toString("utf8")))
         if (!value) { reply(res, 400, { error: "Invalid live change" }); return }
         touch()
+        const shot = await capture(value.screenshot)
+        if (shot) value.batch.shots = [shot]
         const result = service.create(value.id, value.batch)
         reply(res, 202, { requestID: value.id, state: result.state })
       } catch (error) { reply(res, 409, { error: error instanceof Error ? error.message.slice(0, 2_000) : "Live change rejected" }) }
@@ -253,14 +266,17 @@ export async function proxy(target: string, submit: (batch: Batch) => Promise<vo
           reply(res, 403, { error: "Invalid inspector token" })
           return
         }
-        const value = batch(JSON.parse((await body(req)).toString("utf8")))
+        const raw = JSON.parse((await body(req)).toString("utf8"))
+        const value = batch(raw)
         if (!value) {
           reply(res, 400, { error: "Invalid annotation batch" })
           return
         }
         touch()
+        const shot = await capture(raw && typeof raw === "object" && raw.screenshot === true)
+        if (shot) value.shots = [shot]
         await submit(value)
-        reply(res, 200, { ok: true })
+        reply(res, 200, { ok: true, shots: value.shots?.length ?? 0 })
       } catch (error) {
         reply(res, 500, { error: error instanceof Error ? error.message : String(error) })
       }
@@ -337,8 +353,12 @@ export async function proxy(target: string, submit: (batch: Batch) => Promise<vo
         res.end()
       } else if (upstream.body) {
         const stream = Readable.fromWeb(upstream.body as never)
-        stream.on("close", clean)
-        stream.pipe(res)
+        pipeline(stream, res, (error) => {
+          clean()
+          if (!error) return
+          if (!res.headersSent) reply(res, 502, { error: `Upstream stream failed: ${error.message}` })
+          else res.destroy(error)
+        })
       } else {
         res.end()
         clean()

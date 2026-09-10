@@ -2,7 +2,7 @@ import type { Batch, LiveState } from "./types.js"
 
 export type LiveEvent = { id: number; state: LiveState; error?: string }
 export type LiveJob = { accept(): void; busy(): void; activity(): void; idle(): void; fail(reason: unknown): void }
-type Job = { id: string; state: LiveState; events: LiveEvent[]; listeners: Set<(event: LiveEvent) => void>; accepted: boolean; busy: boolean; activity: boolean; idle: boolean; timer: ReturnType<typeof setTimeout> }
+type Job = { id: string; state: LiveState; events: LiveEvent[]; listeners: Set<(event: LiveEvent) => void>; accepted: boolean; work: boolean; idle: boolean; timer: ReturnType<typeof setTimeout> }
 type Options = { timeout?: number }
 
 const limit = 2_000
@@ -32,26 +32,23 @@ export function live(submit: (value: Batch) => Promise<void>, options: Options =
     }
   }
 
-  const observe = (kind: "busy" | "activity" | "idle" | "error", reason?: unknown) => {
-    const job = current
+  const update = (job: Job | undefined, kind: "busy" | "activity" | "idle" | "error", reason?: unknown) => {
     if (!job || terminal(job.state)) return
-    if (kind === "busy") {
-      job.busy = true
-      emit(job, "working")
-      if (job.accepted && job.idle) emit(job, "succeeded")
+    if (kind === "error") {
+      emit(job, "failed", reason)
       return
     }
-    if (kind === "activity") {
-      job.activity = true
-      if (job.accepted && job.idle) emit(job, "succeeded")
+    if (kind === "busy" || kind === "activity") {
+      job.work = true
+      if (kind === "busy" && job.state !== "working") emit(job, "working")
       return
     }
-    if (kind === "idle") {
-      job.idle = true
-      if (job.accepted && (job.busy || job.activity)) emit(job, "succeeded")
-      return
-    }
-    emit(job, "failed", reason)
+    job.idle = true
+    if (job.accepted && job.work) emit(job, "succeeded")
+  }
+
+  const observe = (kind: "busy" | "activity" | "idle" | "error", reason?: unknown) => {
+    update(current, kind, reason)
   }
 
   const create = (id: string, value: Batch) => {
@@ -64,8 +61,7 @@ export function live(submit: (value: Batch) => Promise<void>, options: Options =
     job.events = []
     job.listeners = new Set()
     job.accepted = false
-    job.busy = false
-    job.activity = false
+    job.work = false
     job.idle = false
     job.timer = setTimeout(() => emit(job, "failed", "Live change timed out"), options.timeout ?? 10 * 60_000)
     jobs.set(id, job)
@@ -75,12 +71,12 @@ export function live(submit: (value: Batch) => Promise<void>, options: Options =
     const handle: LiveJob = {
       accept: () => {
         job.accepted = true
-        if (job.idle && (job.busy || job.activity)) emit(job, "succeeded")
+        if (job.idle && job.work) emit(job, "succeeded")
       },
-      busy: () => observe("busy"),
-      activity: () => observe("activity"),
-      idle: () => observe("idle"),
-      fail: (reason) => observe("error", reason),
+      busy: () => update(job, "busy"),
+      activity: () => update(job, "activity"),
+      idle: () => update(job, "idle"),
+      fail: (reason) => update(job, "error", reason),
     }
     void submit(value).then(handle.accept).catch((reason) => handle.fail(reason))
     return { state: job.state }

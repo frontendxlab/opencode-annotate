@@ -176,12 +176,23 @@ describe("generated browser script", () => {
     expect(css).toContain("var(--spring)")
   })
 
-  test("filters sensitive attributes before submission", () => {
+  test("filters sensitive attributes and serializes redacted HTML", () => {
     expect(client).toContain("/(token|secret|password|authorization|cookie|value)/i")
+    expect(client).toContain("const scrub = (el) => {")
+    expect(client).toContain("clone.querySelectorAll(\"*\")")
+    expect(client).toContain("node.removeAttribute(attr.name)")
+    expect(client).toContain("html:scrub(el).outerHTML.slice(0,1200)")
+    expect(client).not.toContain("html:el.outerHTML")
+  })
+
+  test("shares one capture function between batch and live flows", () => {
+    expect(client.match(/const capture = \(el, request, pseudo\) =>/g)).toHaveLength(1)
+    expect(client).toContain("notes.push(capture(el, request, selected))")
+    expect(client).toContain("const annotation = capture(el, request, selected)")
   })
 
   test("annotation payload carries selector, xpath, pseudo, rect, viewport, and source fields", () => {
-    for (const key of ["selector: selector(el)", "xpath: xpath(el)", "pseudo: selected", "rect: { x:", "viewport: active", "source: source(el)", "text:", "styles:", "attributes:"]) {
+    for (const key of ["selector:selector(el)", "xpath:xpath(el)", "pseudo", "rect:{ x:", "viewport:active", "source:source(el)", "text:", "styles:", "attributes:"]) {
       expect(client).toContain(key)
     }
   })
@@ -234,6 +245,26 @@ describe("generated browser script", () => {
     expect(client).toContain('send.textContent = t("send");')
     expect(client).toContain("close();")
     expect(client).toContain("refresh();")
+  })
+
+  test("exposes an opt-in screenshot toggle with accessible state", () => {
+    expect(client).toContain('class="shot icon"')
+    expect(client).toContain('aria-pressed="false"')
+    expect(client).toContain('const shotToggle = root.querySelector(".shot");')
+    expect(client).toContain('shotToggle.setAttribute("aria-pressed", String(shot));')
+    expect(client).toContain('announce(shot ? "screenshotOn" : "screenshotOff");')
+  })
+
+  test("sends the screenshot opt-in with both batch and live submissions", () => {
+    expect(client).toContain("annotations:notes, screenshot:shot")
+    expect(client).toContain("annotations:[request], screenshot:shot")
+    expect(client).toContain("let shot = false;")
+  })
+
+  test("ships screenshot copy keys", () => {
+    for (const key of ['screenshot:"Attach screenshot"', "screenshotHelp:", "screenshotOn:", "screenshotOff:"]) {
+      expect(client).toContain(key)
+    }
   })
 
   test("proxy injects script with concrete target and token values", async () => {

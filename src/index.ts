@@ -5,8 +5,8 @@ import { prompt } from "./prompt.js"
 import { proxy } from "./proxy.js"
 import { live } from "./live.js"
 import { gate } from "./trust.js"
-import { parse } from "./args.js"
-import type { Handle } from "./types.js"
+import { parse, supported } from "./args.js"
+import type { Batch, Handle } from "./types.js"
 
 export default Plugin.define({
   id: "opencode.visual-inspector",
@@ -50,6 +50,7 @@ export default Plugin.define({
     })().catch(() => {}) : Promise.resolve()
 
       const open = async (raw: string | undefined, sessionID: string, options = parse(raw)) => {
+      supported(options, { model: true, fork: false })
       const fallback = typeof ctx.options.url === "string" ? ctx.options.url : undefined
       const explicit = raw || fallback ? normalize(raw || fallback || "") : null
       const target = explicit ?? await detect(ctx.location.directory)
@@ -58,17 +59,23 @@ export default Plugin.define({
       if (refused) throw new Error(refused)
       if (explicit && !(await reachable(target))) throw new Error(`The inspector target is not reachable: ${target}`)
       const selected = await browser(ctx.options.browser ?? process.env.OPENCODE_INSPECT_BROWSER)
+      if (options.model) await ctx.session.switchModel({ sessionID, model: { id: options.model.modelID, providerID: options.model.providerID } })
+      const send = async (batch: Batch) => {
+        const shots = batch.shots ?? []
+        await ctx.session.prompt({
+          sessionID,
+          text: prompt(batch),
+          delivery: "steer",
+          ...(shots.length ? { files: shots.map((shot, index) => ({ uri: `data:${shot.mime};base64,${shot.data}`, name: `screenshot-${index + 1}.png`, description: "Viewport screenshot captured by the visual inspector" })) } : {}),
+        })
+      }
        const previous = active.get(sessionID)
        await previous?.stop()
        if (active.get(sessionID) === previous) active.delete(sessionID)
        if (sessions.has(sessionID)) sessions.delete(sessionID)
-       const state = live(async (batch) => {
-         await ctx.session.prompt({ sessionID, text: prompt(batch), delivery: "steer" })
-       })
+       const state = live(send)
        sessions.set(sessionID, state)
-       const handle = await proxy(target, async (batch) => {
-         await ctx.session.prompt({ sessionID, text: prompt(batch), delivery: "steer" })
-        }, state, options)
+       const handle = await proxy(target, send, state, options)
       active.set(sessionID, handle)
        handle.attach(launch(selected, handle.url))
       return { target, inspector: handle.url, browser: selected.name }
@@ -106,14 +113,15 @@ export default Plugin.define({
             model: { type: "string", description: "provider/model-id" },
             mode: { type: "string", enum: ["batch", "quick"] },
             context: { type: "string", enum: ["default", "fork"] },
+            screenshot: { type: "boolean", description: "Capture a viewport screenshot and attach it as an image for pixel-level vision" },
           },
           required: ["url"],
           additionalProperties: false,
         },
         options: { namespace: "visual" },
         execute: async (value, tool) => {
-          const input = value as { url: string; model?: string; mode?: string; context?: string }
-          const raw = [input.url, input.model && `--model=${input.model}`, input.mode && `--mode=${input.mode}`, input.context && `--context=${input.context}`].filter(Boolean).join(" ")
+          const input = value as { url: string; model?: string; mode?: string; context?: string; screenshot?: boolean }
+          const raw = [input.url, input.model && `--model=${input.model}`, input.mode && `--mode=${input.mode}`, input.context && `--context=${input.context}`, input.screenshot && "--screenshot"].filter(Boolean).join(" ")
           const options = parse(raw)
           const result = await open(options.url, tool.sessionID, options)
           if (!result) throw new Error(`Could not open ${input.url}`)

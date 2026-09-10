@@ -38,3 +38,38 @@ test("installer preserves project JSONC placement", () => {
 test("V1 and V2 use separate package specs", () => {
   expect(v1pkg).toBe(`${pkg}/v1`)
 })
+
+test("installer preserves a trailing comma without duplicating it", () => {
+  const result = patch('{\n  "model": "x",\n}\n', ["plugins"])
+  expect(result.text).not.toContain(",,")
+  const parsed = JSON.parse(result.text.replace(/,(\s*[}\]])/g, "$1"))
+  expect(parsed.model).toBe("x")
+  expect(parsed.plugins).toEqual([pkg])
+})
+
+test("installer does not swallow a trailing line comment into the separator", () => {
+  const result = patch('{\n  "model": "x"\n  // note\n}\n', ["plugins"])
+  expect(result.text).toContain("// note")
+  expect(result.text).not.toContain("// note,")
+  expect(result.text).not.toContain(",,\n  // note")
+})
+
+test("installer ignores a package name that only appears in a comment", () => {
+  const result = patch(`{\n  // ${pkg}\n  "plugins": []\n}\n`, ["plugins"])
+  expect(result.text).toContain(`// ${pkg}`)
+  expect(result.text).toContain(`"plugins": [\n    "${pkg}"\n  ]`)
+})
+
+test("installer keeps JSONC valid across comment and array styles", () => {
+  const result = patch('{\n  /* block\n     comment */\n  "plugins": [\n    // keep\n  ],\n}\n', ["plugins"])
+  expect(result.text).toContain("/* block")
+  expect(result.text).toContain("// keep")
+  expect(result.text).toContain(`"${pkg}"`)
+  const stripped = result.text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "").replace(/,(\s*[}\]])/g, "$1")
+  expect(JSON.parse(stripped).plugins).toEqual([pkg])
+})
+
+test("installer refuses to emit invalid JSONC", () => {
+  expect(() => patch("{ not valid", ["plugins"])).toThrow()
+  expect(() => patch("[]", ["plugins"])).toThrow("root object")
+})

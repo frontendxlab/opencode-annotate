@@ -16,13 +16,14 @@ export const client = String.raw`(() => {
     main:"Main agent", mainHelp:"Use the active agent and its current context.", context:"Subagent with context", contextHelp:"Pass relevant session and project context to a subagent.",
     fresh:"Fresh subagent", freshHelp:"Start with only the annotation batch and project files.", sent:"Annotations sent", sentBody:"What would you like to do next?",
      closeWindow:"Close browser window", continue:"Continue annotating", sizeError:"Enter a width from 320 to 7680 and a height from 320 to 4320.", viewportUnavailable:"Viewport control is unavailable in the default browser.", viewportFailed:"Viewport resize failed.",
-    chatTitle:"Annotate element", changeLive:"Change live", liveLogLabel:"Annotation activity", liveSending:"Sending live change...", liveWorking:"Working on the change...", liveApplied:"Change applied. Reloading page...", liveFailed:"Live change failed", liveCancelled:"Live change cancelled", applied:"Change applied. Page reloaded.", cancelTrack:"Stop tracking", liveMissing:"Describe the change before requesting it live."
+    chatTitle:"Annotate element", changeLive:"Change live", liveLogLabel:"Annotation activity", liveSending:"Sending live change...", liveWorking:"Working on the change...", liveApplied:"Change applied. Reloading page...", liveFailed:"Live change failed", liveCancelled:"Live change cancelled", applied:"Change applied. Page reloaded.", cancelTrack:"Stop tracking", liveMissing:"Describe the change before requesting it live.",
+    screenshot:"Attach screenshot", screenshotHelp:"Attach a viewport screenshot for pixel-level vision", screenshotOn:"Screenshots will be attached to the next submission.", screenshotOff:"Screenshots off."
   };
   const t = (key) => copy[key] || key;
   const host = document.createElement("div");
   host.id = "__oc-inspector";
   const root = host.attachShadow({ mode: "open" });
-   root.innerHTML = '<style></style><div class="box" aria-hidden="true"></div><div class="bar" role="toolbar"><span class="brand"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 13.6 4.7v6.6L8 14.5l-5.6-3.2V4.7L8 1.5Zm0 2.1L4.2 5.8v4.4L8 12.4l3.8-2.2V5.8L8 3.6Z"/></svg><span data-copy="inspect"></span></span><button class="inspect secondary" type="button" data-copy="inspect"></button><button class="view secondary" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3" width="11" height="8" rx="1.2"/><path d="M6 13h4"/></svg><span class="view-label"></span></button><span class="count" aria-live="polite" data-copy="noAnnotations"></span><span class="rule"></span><span class="warning" role="status"></span><button class="clear secondary" type="button" disabled data-copy="clear"></button><button class="send primary" type="button" disabled data-copy="send"></button><button class="exit icon" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4.3 4.3 7.4 7.4m0-7.4-7.4 7.4"/></svg></button><span class="status" role="status" aria-live="polite" aria-atomic="true"></span></div><section class="chat" role="region" hidden><div class="chat-head"><div class="title" data-copy="chatTitle"></div><div class="meta"></div><span class="target-label" data-copy="target"></span><div class="targets"></div></div><div class="log" role="log" aria-live="polite" aria-relevant="additions text"></div><div class="composer"><label for="oc-change" data-copy="change"></label><textarea id="oc-change" rows="1" aria-describedby="oc-change-error"></textarea><div class="error" id="oc-change-error" role="alert" hidden></div><div class="chat-actions"><button class="cancel secondary" type="button" data-copy="cancel"></button><button class="add secondary" type="button" data-copy="addToBatch"></button><button class="live primary" type="button" data-copy="changeLive"></button></div></div></section>';
+   root.innerHTML = '<style></style><div class="box" aria-hidden="true"></div><div class="bar" role="toolbar"><span class="brand"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 13.6 4.7v6.6L8 14.5l-5.6-3.2V4.7L8 1.5Zm0 2.1L4.2 5.8v4.4L8 12.4l3.8-2.2V5.8L8 3.6Z"/></svg><span data-copy="inspect"></span></span><button class="inspect secondary" type="button" data-copy="inspect"></button><button class="view secondary" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3" width="11" height="8" rx="1.2"/><path d="M6 13h4"/></svg><span class="view-label"></span></button><button class="shot icon" type="button" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 5.2h1.6l1-1.4h4.8l1 1.4H13a1 1 0 0 1 1 1v4.4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6.2a1 1 0 0 1 1-1Z"/><circle cx="8" cy="8.6" r="2.1"/></svg></button><span class="count" aria-live="polite" data-copy="noAnnotations"></span><span class="rule"></span><span class="warning" role="status"></span><button class="clear secondary" type="button" disabled data-copy="clear"></button><button class="send primary" type="button" disabled data-copy="send"></button><button class="exit icon" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4.3 4.3 7.4 7.4m0-7.4-7.4 7.4"/></svg></button><span class="status" role="status" aria-live="polite" aria-atomic="true"></span></div><section class="chat" role="region" hidden><div class="chat-head"><div class="title" data-copy="chatTitle"></div><div class="meta"></div><span class="target-label" data-copy="target"></span><div class="targets"></div></div><div class="log" role="log" aria-live="polite" aria-relevant="additions text"></div><div class="composer"><label for="oc-change" data-copy="change"></label><textarea id="oc-change" rows="1" aria-describedby="oc-change-error"></textarea><div class="error" id="oc-change-error" role="alert" hidden></div><div class="chat-actions"><button class="cancel secondary" type="button" data-copy="cancel"></button><button class="add secondary" type="button" data-copy="addToBatch"></button><button class="live primary" type="button" data-copy="changeLive"></button></div></div></section>';
   const css = function(){/*
     :host{all:initial;position:fixed;inset:0;z-index:2147483644;pointer-events:none;color-scheme:dark;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;line-height:1.4;-webkit-font-smoothing:antialiased;--spring:linear(0,0.008 1.1%,0.032 2.2%,0.123 4.7%,0.318 7.6%,0.607 11%,0.835 14.2%,0.944 16.2%,1.018 18.6%,1.05 21.5%,1.052 24.5%,1.033 28.2%,1.007 33%,0.994 38.7%,0.993 46.4%,1.001 61%,1);--out:cubic-bezier(.23,1,.32,1);--panel:rgba(24,24,27,.92);--panel-solid:#18181b;--raised:#27272a;--line:rgba(255,255,255,.11);--muted:#a1a1aa;--text:#fafafa;--accent:#fff;--accent-text:#18181b}
     *{box-sizing:border-box}
@@ -46,6 +47,7 @@ export const client = String.raw`(() => {
     .primary:hover:not(:disabled){background:#e4e4e7}
     .icon{width:32px;padding:0;color:var(--muted)}
      .icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
+     .shot[aria-pressed=true]{color:#93c5fd;background:rgba(96,165,250,.16)}
      .status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
     .chat{position:fixed;left:50%;bottom:76px;z-index:3;display:none;flex-direction:column;width:min(390px,calc(100vw - 24px));max-height:calc(100vh - 130px);color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.38),0 4px 14px rgba(0,0,0,.25),0 1px 0 rgba(255,255,255,.08) inset;backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);pointer-events:auto;opacity:0;filter:blur(4px);transform:translate3d(-50%,8px,0) scale(.965);transition:transform 280ms var(--spring),opacity 160ms var(--out),filter 180ms var(--out);will-change:transform,opacity,filter;overflow:hidden}
     .chat.open{display:flex;opacity:1;filter:none;transform:translate3d(-50%,0,0) scale(1)}
@@ -122,6 +124,7 @@ export const client = String.raw`(() => {
   const clear = root.querySelector(".clear");
    const send = root.querySelector(".send");
    const toggle = root.querySelector(".inspect");
+   const shotToggle = root.querySelector(".shot");
    const status = root.querySelector(".status");
   const view = root.querySelector(".view");
   const viewLabel = root.querySelector(".view-label");
@@ -159,6 +162,7 @@ export const client = String.raw`(() => {
    let live = { id: null, state: "idle", after: 0, ctrl: null };
     let last = null;
    let delivery = "main";
+   let shot = false;
    const storageKey = "__oc_inspect_live_" + token;
   let beatTimer = 0;
     const beat = (action) => { try { return fetch("/__opencode_inspect/lifecycle", { method:"POST", headers:{ "content-type":"application/json", "x-opencode-inspector":token }, body:JSON.stringify({ action }) }).catch(() => null); } catch { return Promise.resolve(null); } };
@@ -175,6 +179,9 @@ export const client = String.raw`(() => {
    toggle.setAttribute("aria-pressed", "true");
    toggle.setAttribute("aria-label", t("inspectOn"));
    const announce = (key) => { status.textContent = t(key); };
+   shotToggle.setAttribute("aria-label", t("screenshotHelp"));
+   shotToggle.title = t("screenshotHelp");
+   shotToggle.onclick = (event) => { if (!event.isTrusted) return; shot = !shot; shotToggle.setAttribute("aria-pressed", String(shot)); announce(shot ? "screenshotOn" : "screenshotOff"); };
 
   const escape = (value) => CSS.escape(String(value));
   const unique = (value) => { try { return document.querySelectorAll(value).length === 1; } catch { return false; } };
@@ -220,6 +227,22 @@ export const client = String.raw`(() => {
       if (hit?.fileName) return hit.fileName + (hit.lineNumber ? ":" + hit.lineNumber : "");
     }
     return null;
+  };
+  const sensitive = /(token|secret|password|authorization|cookie|value)/i;
+  const scrub = (el) => {
+    const clone = el.cloneNode(true);
+    for (const node of [clone, ...clone.querySelectorAll("*")]) {
+      if (!node.attributes) continue;
+      for (const attr of [...node.attributes]) if (sensitive.test(attr.name)) node.removeAttribute(attr.name);
+    }
+    return clone;
+  };
+  const styles = ["display","position","color","background-color","font-family","font-size","font-weight","line-height","margin","padding","border","border-radius","width","height"];
+  const capture = (el, request, pseudo) => {
+    const css = pseudo ? getComputedStyle(el, pseudo) : getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    const safe = [...el.attributes].filter((attr) => !sensitive.test(attr.name)).slice(0, 20);
+    return { request, page:new URL(location.pathname + location.search + location.hash, app).href, tag:el.tagName.toLowerCase(), id:el.id || null, classes:[...el.classList], selector:selector(el), xpath:xpath(el), pseudo, html:scrub(el).outerHTML.slice(0,1200), text:(el.innerText || el.textContent || "").trim().slice(0,300), attributes:Object.fromEntries(safe.map((attr) => [attr.name, attr.value])), styles:Object.fromEntries(styles.map((key) => [key, css.getPropertyValue(key)])), rect:{ x:rect.x, y:rect.y, width:rect.width, height:rect.height }, viewport:active, source:source(el) };
   };
   const shape = (el, target = null) => {
     const css = target ? getComputedStyle(el, target) : getComputedStyle(el);
@@ -290,7 +313,7 @@ export const client = String.raw`(() => {
        close(true);
        pending = true; last = { request, delivery:route }; chatInput.disabled = true; chatLive.disabled = true; chatAdd.disabled = true; chatError.hidden = true;
      const id = crypto.randomUUID(); live = { id, state:"submitting", after:0, ctrl:null }; sessionStorage.setItem(storageKey, JSON.stringify({ id, state:"submitting", after:0 })); state("submitting");
-       try { const res = await fetch("/__opencode_inspect/change", { method:"POST", headers:{ "content-type":"application/json", "x-opencode-inspector":token }, body:JSON.stringify({ requestID:id, target:app, viewports:[active], delivery:route, annotations:[request] }) }); if (!res.ok) throw new Error(await res.text()); const result = await res.json(); if (result.requestID !== id) throw new Error("Invalid live change response"); await stream(id); } catch (error) { if (live.state !== "cancelled") state("failed", error instanceof Error ? error.message : t("liveFailed")); } finally { pending = false; chatAdd.disabled = false; }
+       try { const res = await fetch("/__opencode_inspect/change", { method:"POST", headers:{ "content-type":"application/json", "x-opencode-inspector":token }, body:JSON.stringify({ requestID:id, target:app, viewports:[active], delivery:route, annotations:[request], screenshot:shot }) }); if (!res.ok) throw new Error(await res.text()); const result = await res.json(); if (result.requestID !== id) throw new Error("Invalid live change response"); await stream(id); } catch (error) { if (live.state !== "cancelled") state("failed", error instanceof Error ? error.message : t("liveFailed")); } finally { pending = false; chatAdd.disabled = false; }
    };
   const modal = (title, body) => {
     close(true);
@@ -417,16 +440,13 @@ export const client = String.raw`(() => {
        }
        chatInput.removeAttribute("aria-invalid"); chatError.hidden = true;
        sync();
-      const css = selected ? getComputedStyle(el, selected) : getComputedStyle(el);
-      const rect = el.getBoundingClientRect();
-      const safe = [...el.attributes].filter((attr) => !/(token|secret|password|authorization|cookie|value)/i.test(attr.name)).slice(0, 20);
-      remember(active);
-      notes.push({ request, page: new URL(location.pathname + location.search + location.hash, app).href, tag: el.tagName.toLowerCase(), id: el.id || null, classes: [...el.classList], selector: selector(el), xpath: xpath(el), pseudo: selected, html: el.outerHTML.slice(0, 1200), text: (el.innerText || el.textContent || "").trim().slice(0, 300), attributes: Object.fromEntries(safe.map((attr) => [attr.name, attr.value])), styles: Object.fromEntries(["display","position","color","background-color","font-family","font-size","font-weight","line-height","margin","padding","border","border-radius","width","height"].map((key) => [key, css.getPropertyValue(key)])), rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, viewport: active, source: source(el) });
+       remember(active);
+       notes.push(capture(el, request, selected));
         chatClose();
         refresh();
         announce("added");
      };
-      chatLive.onclick = (event) => { if (!event.isTrusted) return; const request = chatInput.value.trim(); if (!request) { chatError.hidden = false; chatError.textContent = t("liveMissing"); chatInput.setAttribute("aria-invalid", "true"); chatInput.focus(); return; } chatInput.removeAttribute("aria-invalid"); const rect = el.getBoundingClientRect(); const css = selected ? getComputedStyle(el, selected) : getComputedStyle(el); const safe = [...el.attributes].filter((attr) => !/(token|secret|password|authorization|cookie|value)/i.test(attr.name)).slice(0, 20); const annotation = { request, page:new URL(location.pathname + location.search + location.hash, app).href, tag:el.tagName.toLowerCase(), id:el.id || null, classes:[...el.classList], selector:selector(el), xpath:xpath(el), pseudo:selected, html:el.outerHTML.slice(0,1200), text:(el.innerText || el.textContent || "").trim().slice(0,300), attributes:Object.fromEntries(safe.map((attr) => [attr.name, attr.value])), styles:Object.fromEntries(["display","position","color","background-color","font-family","font-size","font-weight","line-height","margin","padding","border","border-radius","width","height"].map((key) => [key, css.getPropertyValue(key)])), rect:{ x:rect.x, y:rect.y, width:rect.width, height:rect.height }, viewport:active, source:source(el) }; const node = modal(t("changeLive"), t("chooseLiveDeliveryBody")); choice(node, t("main"), t("mainHelp"), () => { delivery = "main"; void liveSend(annotation, delivery); }); choice(node, t("context"), t("contextHelp"), () => { delivery = "subagent-context"; void liveSend(annotation, delivery); }); choice(node, t("fresh"), t("freshHelp"), () => { delivery = "subagent-fresh"; void liveSend(annotation, delivery); }); node.querySelector(".choices button").focus({ preventScroll:true }); };
+      chatLive.onclick = (event) => { if (!event.isTrusted) return; const request = chatInput.value.trim(); if (!request) { chatError.hidden = false; chatError.textContent = t("liveMissing"); chatInput.setAttribute("aria-invalid", "true"); chatInput.focus(); return; } chatInput.removeAttribute("aria-invalid"); const annotation = capture(el, request, selected); const node = modal(t("changeLive"), t("chooseLiveDeliveryBody")); choice(node, t("main"), t("mainHelp"), () => { delivery = "main"; void liveSend(annotation, delivery); }); choice(node, t("context"), t("contextHelp"), () => { delivery = "subagent-context"; void liveSend(annotation, delivery); }); choice(node, t("fresh"), t("freshHelp"), () => { delivery = "subagent-fresh"; void liveSend(annotation, delivery); }); node.querySelector(".choices button").focus({ preventScroll:true }); };
      chat.hidden = false; chat.classList.add("open"); rows(); chatInput.focus({ preventScroll:true });
    };
    const move = (event) => {
@@ -504,7 +524,7 @@ export const client = String.raw`(() => {
      send.textContent = t("sending");
      announce("sendingStatus");
     try {
-      const res = await fetch("/__opencode_inspect/annotations", { method:"POST", headers:{ "content-type":"application/json", "x-opencode-inspector":token }, body:JSON.stringify({ target:app, viewports:views, delivery, annotations:notes }) });
+      const res = await fetch("/__opencode_inspect/annotations", { method:"POST", headers:{ "content-type":"application/json", "x-opencode-inspector":token }, body:JSON.stringify({ target:app, viewports:views, delivery, annotations:notes, screenshot:shot }) });
       if (!res.ok) throw new Error(await res.text());
       count.textContent = t("sent");
       send.textContent = t("sent");

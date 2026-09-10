@@ -121,7 +121,7 @@ export function launch(item: Browser, url: string): BrowserControl {
     const child = spawn(item.bin, [...item.args, url], { detached: true, stdio: "ignore" })
     child.on("error", () => {})
     child.unref()
-    return { ready: Promise.resolve(), resize: async () => { throw new Error("Viewport control is unavailable for the default browser") }, close: async () => {} }
+    return { ready: Promise.resolve(), resize: async () => { throw new Error("Viewport control is unavailable for the default browser") }, screenshot: async () => { throw new Error("Screenshots are unavailable for the default browser") }, close: async () => {} }
   }
   const dir = mkdtempSync(path.join(tmpdir(), "opencode-inspector-"))
   const args = launchArgs(url, dir)
@@ -148,6 +148,17 @@ export function launch(item: Browser, url: string): BrowserControl {
       }
       const value = await connection.send<{ result: { value: Viewport } }>("Runtime.evaluate", { expression: "({width:innerWidth,height:innerHeight})", returnByValue: true })
       return value.result.value
+    },
+    async screenshot(clip) {
+      const connection = await ready
+      await connection.send("Runtime.evaluate", { expression: "(function(){var h=document.getElementById('__oc-inspector');if(h)h.style.visibility='hidden';})()" })
+      try {
+        const params = clip ? { format: "png", clip: { ...clip, scale: 1 }, captureBeyondViewport: false } : { format: "png", captureBeyondViewport: false }
+        const shot = await connection.send<{ data: string }>("Page.captureScreenshot", params)
+        return shot.data
+      } finally {
+        await connection.send("Runtime.evaluate", { expression: "(function(){var h=document.getElementById('__oc-inspector');if(h)h.style.visibility='';})()" }).catch(() => {})
+      }
     },
     async close() {
       if (closed) return

@@ -124,14 +124,24 @@ For local development of either version, add the package directory to `opencode.
 /inspect http://localhost:5173 --model openai/gpt-5.6-luna --mode quick --context=fork
 ```
 
-- `--model provider/model-id` selects a provider and model identifier.
+- `--model provider/model-id` selects a provider and model identifier. Supported by the V2 adapter through `session.switchModel`. The V1 adapter rejects it, because the V1 session API has no model-switch operation.
 - `--mode batch|quick` selects batch annotation or live-change mode. The default is `batch`.
-- `--context default|fork` selects the current session or a forked context. The default is `default`.
+- `--context default|fork` selects the current session or a forked context. The default is `default`. Supported by the V1 adapter through `session.fork`. The V2 adapter rejects it, because the V2 plugin session surface does not expose fork.
 - `--context:fork` is accepted as an alias for `--context=fork`.
-- Invalid values, duplicate options, extra URLs, and malformed model identifiers are rejected before the inspector opens.
+- `--screenshot` opts in to attaching a viewport screenshot to the submission. The default is off, and when off nothing is captured and the submission payload is unchanged.
+- `--no-screenshot` is accepted as an explicit opt-out and resets the flag to off.
+- Invalid values, duplicate options, extra URLs, malformed model identifiers, and options an adapter cannot honour are rejected before the inspector opens.
 - A model combined with `context=default` displays a yellow warning that the current session model will change.
 
-The options are validated and carried into the inspector. `quick` hides the batch action and presents the live-change flow. Model switching and fork-session execution remain host-session operations and must be supported by the active OpenCode adapter before they can take effect.
+The options are validated and carried into the inspector. `quick` hides the batch action and presents the live-change flow. `--model` is applied through the active session before the inspector opens, so annotations run against the selected model. `--context=fork` routes annotations to a forked session where the adapter supports it. `--screenshot` captures one viewport PNG through the Chrome DevTools Protocol from the Chrome or Chromium instance the inspector already launches, and attaches it to the same submission as the annotations, so the model receives pixels for spacing, color, and alignment questions.
+
+### Screenshots
+
+Use `--screenshot` on `/inspect` or `screenshot: true` on the `visual.inspect` tool when the requested change depends on how the page actually renders: spacing, color, and alignment issues that computed styles and geometry alone do not convey. The browser client also shows an **Attach screenshot** camera toggle in its toolbar, and the toggle state is sent with each submission.
+
+The feature is off by default. When disabled, no capture happens and the submission payload is unchanged.
+
+The capture is taken from the same Chrome or Chromium instance the inspector already launches, through the Chrome DevTools Protocol. The image is attached to the same submission as the annotations: V2 sends it as a `files[]` entry with a `data:image/png;base64,...` uri, V1 as a file part with a `data:` url. The inspector overlay is hidden during capture, so the toolbar and annotation UI do not appear in the image. When browser discovery falls back to the system default browser because no Chrome or Chromium executable was found, screenshots are unavailable, because that path has no DevTools connection. The submission still proceeds and the screenshot is omitted.
 
 Open a known URL:
 

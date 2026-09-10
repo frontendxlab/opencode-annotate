@@ -31,6 +31,7 @@ export type Batch = {
   viewports: Viewport[]
   delivery: Delivery
   annotations: Annotation[]
+  shots?: Shot[]
 }
 
 export type LiveState = "submitting" | "working" | "succeeded" | "failed" | "cancelled"
@@ -52,6 +53,7 @@ export type Browser = {
 export type BrowserControl = {
   ready: Promise<void>
   resize(width: number, height: number): Promise<Viewport>
+  screenshot(clip?: { x: number; y: number; width: number; height: number }): Promise<string>
   close(): Promise<void>
 }
 
@@ -65,4 +67,7 @@ export type Handle = {
 export type InspectorOptions = {
   mode?: "batch" | "quick"
   warning?: string
+  screenshot?: boolean
 }
+
+export type Shot = { mime: string; data: string }
