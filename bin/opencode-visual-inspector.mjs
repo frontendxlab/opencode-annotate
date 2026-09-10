@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createServer } from "node:http"
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -313,4 +313,4 @@ export const main = async (args = process.argv.slice(2)) => {
   console.log("\nRestart OpenCode or its desktop app to load the plugin.")
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main().catch((error) => { console.error(`Error: ${error.message}`); process.exitCode = 1 })
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) main().catch((error) => { console.error(`Error: ${error.message}`); process.exitCode = 1 })
